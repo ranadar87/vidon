@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import RenderServiceCheck from '@/components/RenderServiceCheck';
 
 export default function Settings() {
   const [configs, setConfigs] = useState([]);
@@ -74,6 +75,8 @@ export default function Settings() {
             ))}
           </div>
         </Card>
+
+        <RenderServiceCheck />
       </div>
     </div>
   );
