@@ -43,10 +43,11 @@ Deno.serve(async (req) => {
     const renders = await sr.entities.Render.filter({ job_id });
     const aspectRatios = renders.map(r => r.aspect_ratio);
 
-    // callback URL חוזר ל-renderWebhook עם ה-secret.
-    // משתמשים בפורמט הציבורי /functions/<name> (לא /api/apps/...) כדי שהקריאה
-    // החיצונית מ-Railway תאומת כראוי ולא תחזור עם 401.
-    const base = url_origin(req);
+    // callback/upload URLs — חייבים להצביע על הדומיין הציבורי של Base44, לא על
+    // כתובת הדיספצ'ר הפנימית (req.url), אחרת קריאה חיצונית מ-Railway נדחית עם
+    // 401 "invalid dispatcher secret". הפורמט הציבורי: /api/apps/<APP_ID>/functions/<name>.
+    const appId = Deno.env.get("BASE44_APP_ID");
+    const base = `https://${appId}.base44.app/api/apps/${appId}`;
     const callbackUrl = `${base}/functions/renderWebhook?secret=${encodeURIComponent(secret)}`;
     // uploadUrl — שירות הרינדור מעלה אליו את ה-MP4, והוא נשמר באחסון Base44
     const uploadUrl = `${base}/functions/uploadRender?secret=${encodeURIComponent(secret)}`;
@@ -79,8 +80,3 @@ Deno.serve(async (req) => {
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
-
-function url_origin(req) {
-  const u = new URL(req.url);
-  return `${u.protocol}//${u.host}`;
-}
