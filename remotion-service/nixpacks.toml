@@ -1,0 +1,14 @@
+# Railway/Nixpacks — Remotion דורש Chromium ו-ffmpeg עבור הרינדור.
+[phases.setup]
+nixPkgs = ["nodejs_20", "ffmpeg", "chromium"]
+
+[phases.install]
+cmds = ["npm install"]
+
+[start]
+cmd = "node server.js"
+
+[variables]
+# Remotion ישתמש ב-Chromium שמותקן ע"י Nix במקום להוריד אחד משלו
+REMOTION_CHROME_EXECUTABLE = "/root/.nix-profile/bin/chromium"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"

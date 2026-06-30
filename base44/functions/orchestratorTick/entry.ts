@@ -165,7 +165,13 @@ async function tick(sr, jobId) {
       await sr.entities.Render.create({ account_id: job.account_id, job_id: jobId, aspect_ratio: ar, status: "rendering" });
     }
     await sr.entities.Job.update(jobId, { state: "rendering", progress_pct: 80 });
-    // בייצור: await renderService.submit(buildRenderRequest) — שירות Remotion חיצוני
+    // הפעלת שירות Remotion החיצוני (Railway) — מרנדר אסינכרונית ומחזיר ל-renderWebhook
+    try {
+      await sr.functions.invoke("triggerRender", { job_id: jobId });
+    } catch (e) {
+      // אם השירות לא מוגדר עדיין — נשאיר את הרינדורים ב-rendering למעקב ידני
+      console.error("triggerRender failed:", e.message);
+    }
     renders = await sr.entities.Render.filter({ job_id: jobId });
   }
 
