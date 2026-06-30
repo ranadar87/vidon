@@ -47,7 +47,8 @@ COPY . .
 
 # הורדת דפדפן Chromium ש-Remotion ישתמש בו (תואם לגרסת @remotion/renderer).
 # הספריות שהותקנו למעלה מאפשרות לו לרוץ ללא שגיאת shared libraries.
-RUN npx remotion browser ensure
+# קוראים ל-API ensureBrowser ישירות מ-@remotion/renderer (הדרך הנכונה ב-4.x).
+RUN node -e "require('@remotion/renderer').ensureBrowser().then(()=>console.log('browser ensured')).catch(e=>{console.error(e);process.exit(1)})"
 
 ENV PORT=8080
 EXPOSE 8080
