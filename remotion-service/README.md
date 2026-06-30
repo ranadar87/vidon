@@ -34,8 +34,8 @@ VIDON (Base44)  ──POST /render──►  שירות זה (Railway)  ──re
 1. ב-[railway.app](https://railway.app) → **New Project → Deploy from GitHub repo** ובחר את ה-repo.
 2. Railway יזהה את `nixpacks.toml` ויתקין Node + ffmpeg + chromium אוטומטית.
 3. ב-**Variables** הגדר:
-   - `RENDER_WEBHOOK_SECRET` — מחרוזת אקראית ארוכה (תזדקק לאותה מחרוזת ב-VIDON).
-   - `UPLOAD_BASE_URL` — כתובת אחסון ציבורי שאליה השירות יעלה את ה-MP4 (ראה שלב 4).
+   - `RENDER_WEBHOOK_SECRET` — מחרוזת אקראית ארוכה (זהה לזו שב-VIDON).
+   > אין צורך ב-`UPLOAD_BASE_URL` — התוצרים נשמרים אוטומטית באחסון של Base44.
 4. לאחר ה-deploy העתק את ה-**public URL** של השירות (למשל `https://vidon-remotion.up.railway.app`).
 
 > ⚠️ הקצֵה לפחות **2GB RAM** לשירות (Settings → Resources) — רינדור Remotion צורך זיכרון.
@@ -46,20 +46,16 @@ VIDON (Base44)  ──POST /render──►  שירות זה (Railway)  ──re
 - `RENDER_WEBHOOK_SECRET` = **אותה** מחרוזת שהגדרת ב-Railway.
 
 זהו — מרגע זה, כש-job מסיים לייצר נכסים, ה-orchestrator קורא ל-`triggerRender`,
-השירות מרנדר, ומחזיר את ה-URLs ל-`renderWebhook`.
+השירות מרנדר, מעלה את ה-MP4 לאחסון של Base44 (דרך `uploadRender`), ומחזיר את ה-URLs ל-`renderWebhook`.
 
-## שלב 4 — אחסון התוצרים
-השירות מרנדר MP4 לקובץ זמני וצריך להעלות אותו לאחסון ציבורי כדי שיהיה URL לצפייה.
-ערוך את הפונקציה `uploadOutput` ב-`server.js` לפי הספק שלך:
-- **S3 / Cloudflare R2** — השתמש ב-`@aws-sdk/client-s3` והחזר את ה-public URL.
-- **Supabase Storage** — `supabase.storage.from(bucket).upload(...)`.
-- **פשוט להתחלה** — שירות PUT כמו [transfer.sh] או bucket עם presigned PUT, דרך `UPLOAD_BASE_URL`.
+## אחסון התוצרים (אוטומטי, על Base44)
+אין צורך בהגדרה. השירות שולח את ה-MP4 לפונקציה `uploadRender` ב-VIDON, היא מעלה אותו
+לאחסון של Base44 ומחזירה URL ציבורי קבוע שנשמר בישות `Render`.
 
 ## בדיקה מקומית
 ```bash
 npm install
-RENDER_WEBHOOK_SECRET=test UPLOAD_BASE_URL=https://... node server.js
+RENDER_WEBHOOK_SECRET=test node server.js
 curl -X POST http://localhost:3000/render \
   -H "Content-Type: application/json" -H "x-render-secret: test" \
-  -d '{"jobId":"test","aspectRatios":["9:16"],"scenes":[{"id":"s1","durationSec":3,"text":"שלום","visualUrl":null}],"callbackUrl":"https://webhook.site/..."}'
-``
+  -d '{"jobId":"test","aspectRatios":["9:16"],"scenes":[{"id":"s1","durationSec":3,"text":"שלום","visualUrl":null}],"callbackUrl":"https://webhook.site/...","uploadUrl":"https://webhook.site/..."}'

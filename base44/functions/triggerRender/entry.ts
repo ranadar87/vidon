@@ -46,6 +46,8 @@ Deno.serve(async (req) => {
     // callback URL חוזר ל-renderWebhook עם ה-secret
     const appId = Deno.env.get("BASE44_APP_ID");
     const callbackUrl = `${url_origin(req)}/api/apps/${appId}/functions/renderWebhook?secret=${encodeURIComponent(secret)}`;
+    // uploadUrl — שירות הרינדור מעלה אליו את ה-MP4, והוא נשמר באחסון Base44
+    const uploadUrl = `${url_origin(req)}/api/apps/${appId}/functions/uploadRender?secret=${encodeURIComponent(secret)}`;
 
     const payload = {
       jobId: job_id,
@@ -56,6 +58,7 @@ Deno.serve(async (req) => {
       captionData,
       aspectRatios,
       callbackUrl,
+      uploadUrl,
     };
 
     const res = await fetch(renderUrl.replace(/\/$/, "") + "/render", {

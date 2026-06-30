@@ -87,8 +87,8 @@ async function renderJob(payload) {
         inputProps,
       });
 
-      // העלאה לאחסון ציבורי — ראה README. כאן מחזירים את הקובץ כ-data דרך callback.
-      const url = await uploadOutput(outPath, `${jobId}-${ar.replace(":", "x")}.mp4`);
+      // העלאה לאחסון Base44 דרך פונקציית uploadRender
+      const url = await uploadOutput(outPath, `${jobId}-${ar.replace(":", "x")}.mp4`, payload.uploadUrl);
       results.push({ aspect_ratio: ar, status: "completed", url });
       fs.unlink(outPath, () => {});
     } catch (err) {
@@ -100,22 +100,23 @@ async function renderJob(payload) {
   await postBack(callbackUrl, jobId, results);
 }
 
-// העלאת התוצר לאחסון. ברירת מחדל: דורש הגדרת אחסון (S3/Supabase/Cloudinary).
-// אם UPLOAD_BASE_URL מוגדר — מעלים לשם; אחרת מחזירים שגיאה ברורה.
-async function uploadOutput(filePath, fileName) {
-  const base = process.env.UPLOAD_BASE_URL;
-  if (!base) {
-    throw new Error("UPLOAD_BASE_URL not configured — set up file storage (see README)");
+// העלאת התוצר לאחסון Base44 דרך פונקציית uploadRender.
+// שולחים את ה-MP4 מקודד base64; הפונקציה מעלה ומחזירה URL ציבורי קבוע.
+async function uploadOutput(filePath, fileName, uploadUrl) {
+  if (!uploadUrl) {
+    throw new Error("uploadUrl missing in payload");
   }
   const fileBuffer = fs.readFileSync(filePath);
-  const res = await fetch(base.replace(/\/$/, "") + "/" + fileName, {
-    method: "PUT",
-    headers: { "Content-Type": "video/mp4" },
-    body: fileBuffer,
+  const contentBase64 = fileBuffer.toString("base64");
+  const res = await fetch(uploadUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileName, contentBase64 }),
   });
-  if (!res.ok) throw new Error("upload failed: " + res.status);
-  // מניחים שה-URL הציבורי זהה לכתובת ה-PUT (התאם לספק האחסון שלך)
-  return base.replace(/\/$/, "") + "/" + fileName;
+  if (!res.ok) throw new Error("upload failed: " + res.status + " " + (await res.text()));
+  const data = await res.json();
+  if (!data.url) throw new Error("upload returned no url");
+  return data.url;
 }
 
 async function postBack(callbackUrl, jobId, renders) {
