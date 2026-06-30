@@ -18,6 +18,7 @@
       "enum": [
         "nano_banana",
         "wavespeed",
+        "openrouter",
         "heygen",
         "veo",
         "kling",
@@ -25,6 +26,7 @@
         "scribe",
         "library",
         "suno",
+        "stock",
         "remotion"
       ]
     },
@@ -40,12 +42,17 @@
     },
     "provider_job_id": {
       "type": "string",
-      "description": "\u05de\u05d6\u05d4\u05d4 \u05e1\u05e4\u05e7 \u05d0\u05e1\u05d9\u05e0\u05db\u05e8\u05d5\u05e0\u05d9"
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05e1\u05e4\u05e7 \u05d0\u05e1\u05d9\u05e0\u05db\u05e8\u05d5\u05e0\u05d9 \u2014 \u05e0\u05e9\u05de\u05e8 \u05d1-submit \u05db\u05d3\u05d9 \u05e9\u05dc\u05d0 \u05d9\u05d9\u05e9\u05dc\u05d7 submit \u05e9\u05e0\u05d9 (\u05de\u05d5\u05e0\u05e2 \u05d7\u05d9\u05d5\u05d1 \u05db\u05e4\u05d5\u05dc)"
     },
     "attempt": {
       "type": "integer",
       "default": 0,
       "description": "\u05de\u05e1\u05e4\u05e8 \u05e0\u05d9\u05e1\u05d9\u05d5\u05df (\u05e2\u05d3 3)"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u05d6\u05de\u05df \u05d4-claim/submit \u2014 \u05dc-reaper \u05e9\u05dc \u05e9\u05dc\u05d1\u05d9\u05dd \u05ea\u05e7\u05d5\u05e2\u05d9\u05dd \u05d5\u05dc-rate-window"
     },
     "depends_on": {
       "type": "array",

@@ -83,7 +83,18 @@ async function callLLM(messages) {
     throw new Error(`OpenRouter error ${res.status}: ${text}`);
   }
   const data = await res.json();
-  const content = data.choices?.[0]?.message?.content || "{}";
+  let content = data.choices?.[0]?.message?.content || "{}";
+  // Claude לא תמיד מכבד response_format ועוטף ב-```json ... ``` — מנקים לפני parse.
+  content = content.trim();
+  if (content.startsWith("```")) {
+    content = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  }
+  // חילוץ אובייקט ה-JSON הראשון אם יש טקסט עוטף נוסף
+  const first = content.indexOf("{");
+  const last = content.lastIndexOf("}");
+  if (first > 0 || last < content.length - 1) {
+    if (first !== -1 && last !== -1) content = content.slice(first, last + 1);
+  }
   return JSON.parse(content);
 }
 
