@@ -11,24 +11,37 @@ function buildSteps(brief) {
   const steps = [];
   const vt = brief.format.videoType;
 
-  // שלבי מקור ויזואלי — לכל סצנה
-  for (const s of brief.scenes) {
-    steps.push({
-      name: `visual:${s.id}`,
-      provider: s.visual.source === "nano_banana" ? "nano_banana"
-        : s.visual.source === "wavespeed" ? "wavespeed"
-        : s.visual.source === "openrouter" ? "openrouter"
-        : s.visual.source === "veo" ? "veo"
-        : s.visual.source === "kling" ? "kling" : "stock",
-      depends_on: [],
-      input: { scene: s, brand: brief.project.brand },
-      async: ["veo", "kling", "heygen"].includes(s.visual.source),
-    });
-  }
+  const isAvatar = vt === "ugc_avatar";
 
-  // קריינות
+  // קריינות — באווטאר חייבת להיווצר ראשונה כדי לסנכרן שפתיים (lip-sync)
   if (brief.voiceover?.enabled) {
     steps.push({ name: "voiceover", provider: "elevenlabs", depends_on: [], input: { script: brief.voiceover.fullScript, voiceId: brief.voiceover.voiceId }, async: false });
+  }
+
+  // שלבי מקור ויזואלי — לכל סצנה
+  for (const s of brief.scenes) {
+    if (isAvatar) {
+      // ugc_avatar: קליפ אווטאר HeyGen מסונכרן לקריינות. תלוי ב-voiceover (אם קיים).
+      steps.push({
+        name: `visual:${s.id}`,
+        provider: "heygen",
+        depends_on: brief.voiceover?.enabled ? ["voiceover"] : [],
+        input: { scene: s, brand: brief.project.brand, avatarId: brief.avatar?.avatarId, script: s.script || brief.voiceover?.fullScript },
+        async: true,
+      });
+    } else {
+      steps.push({
+        name: `visual:${s.id}`,
+        provider: s.visual.source === "nano_banana" ? "nano_banana"
+          : s.visual.source === "wavespeed" ? "wavespeed"
+          : s.visual.source === "openrouter" ? "openrouter"
+          : s.visual.source === "veo" ? "veo"
+          : s.visual.source === "kling" ? "kling" : "stock",
+        depends_on: [],
+        input: { scene: s, brand: brief.project.brand },
+        async: ["veo", "kling"].includes(s.visual.source),
+      });
+    }
   }
 
   // כתוביות — תלויות בקריינות (Scribe צריך את האודיו)
@@ -87,6 +100,11 @@ async function runAdapter(sr, provider, input) {
       const data = res.data || res;
       if (data.error) throw new Error(`ttsElevenLabs: ${data.error}`);
       return { assets: [{ type: "voiceover", url: data.url, meta: { units: data.units } }], cost: data.cost_usd || 0 };
+    }
+    case "heygen": {
+      // קליפ אווטאר UGC מסונכרן-שפתיים. MVP: stub — בייצור קריאת submit/poll אמיתית מול HeyGen.
+      const scene = input.scene || {};
+      return { assets: [{ type: "avatar_clip", url: "https://placeholder/avatar.mp4", scene_id: scene.id, meta: { avatarId: input.avatarId } }], cost: 1.20 };
     }
     case "scribe":
       return { assets: [{ type: "caption_data", url: "https://placeholder/captions.json" }], cost: 0.40 };
