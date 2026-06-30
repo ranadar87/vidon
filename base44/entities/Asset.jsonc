@@ -1,0 +1,43 @@
+{
+  "name": "Asset",
+  "type": "object",
+  "description": "\u05e0\u05db\u05e1 \u05d1\u05d9\u05e0\u05d9\u05d9\u05dd (\u05ea\u05de\u05d5\u05e0\u05d4, \u05e7\u05d5\u05dc, clip, \u05e0\u05ea\u05d5\u05e0\u05d9 \u05db\u05ea\u05d5\u05d1\u05d9\u05d5\u05ea).",
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "job_step_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "still",
+        "voiceover",
+        "avatar_clip",
+        "caption_data",
+        "music_track",
+        "broll"
+      ]
+    },
+    "scene_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05e1\u05e6\u05e0\u05d4 \u05e9\u05d0\u05dc\u05d9\u05d4 \u05e9\u05d9\u05d9\u05da \u05d4\u05e0\u05db\u05e1 (\u05d0\u05dd \u05e8\u05dc\u05d5\u05d5\u05e0\u05d8\u05d9)"
+    },
+    "url": {
+      "type": "string",
+      "description": "\u05db\u05ea\u05d5\u05d1\u05ea \u05d4\u05e0\u05db\u05e1"
+    },
+    "meta": {
+      "type": "object",
+      "description": "\u05de\u05d8\u05d0-\u05d3\u05d0\u05d8\u05d4 (\u05de\u05e9\u05da, \u05e8\u05d6\u05d5\u05dc\u05d5\u05e6\u05d9\u05d4, timestamps \u05d5\u05db\u05d5')"
+    }
+  },
+  "required": [
+    "job_id",
+    "type"
+  ]
+}

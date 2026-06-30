@@ -1,0 +1,73 @@
+{
+  "name": "JobStep",
+  "type": "object",
+  "description": "\u05de\u05e2\u05e7\u05d1 \u05dc\u05db\u05dc \u05e9\u05dc\u05d1 \u05d1-pipeline \u2014 \u05dc\u05d8\u05d5\u05d1\u05ea retries \u05d5\u05db\u05e9\u05dc \u05d7\u05dc\u05e7\u05d9.",
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05e9\u05dc\u05d1, \u05dc\u05de\u05e9\u05dc visual:s1 / voiceover / captions / render"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "nano_banana",
+        "wavespeed",
+        "heygen",
+        "veo",
+        "kling",
+        "elevenlabs",
+        "scribe",
+        "library",
+        "suno",
+        "remotion"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "running",
+        "succeeded",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "provider_job_id": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05e1\u05e4\u05e7 \u05d0\u05e1\u05d9\u05e0\u05db\u05e8\u05d5\u05e0\u05d9"
+    },
+    "attempt": {
+      "type": "integer",
+      "default": 0,
+      "description": "\u05de\u05e1\u05e4\u05e8 \u05e0\u05d9\u05e1\u05d9\u05d5\u05df (\u05e2\u05d3 3)"
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "\u05e9\u05de\u05d5\u05ea steps \u05ea\u05dc\u05d5\u05d9\u05d9\u05dd"
+    },
+    "input": {
+      "type": "object",
+      "description": "\u05e7\u05dc\u05d8 \u05dc\u05e9\u05dc\u05d1"
+    },
+    "output": {
+      "type": "object",
+      "description": "\u05e4\u05dc\u05d8/\u05e0\u05db\u05e1\u05d9\u05dd \u05de\u05d4\u05e9\u05dc\u05d1"
+    },
+    "error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "job_id",
+    "name"
+  ]
+}

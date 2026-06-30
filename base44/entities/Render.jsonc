@@ -1,0 +1,46 @@
+{
+  "name": "Render",
+  "type": "object",
+  "description": "\u05ea\u05d5\u05e6\u05e8 \u05e1\u05d5\u05e4\u05d9 \u05dc\u05d9\u05d7\u05e1 \u05ea\u05e6\u05d5\u05d2\u05d4. \u05de\u05e4\u05ea\u05d7 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9: (job_id, aspect_ratio).",
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "enum": [
+        "9:16",
+        "1:1",
+        "4:5",
+        "16:9"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "rendering",
+        "completed",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "url": {
+      "type": "string",
+      "description": "\u05db\u05ea\u05d5\u05d1\u05ea \u05d4-MP4 \u05d4\u05e1\u05d5\u05e4\u05d9"
+    },
+    "duration_sec": {
+      "type": "number"
+    },
+    "error": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "job_id",
+    "aspect_ratio"
+  ]
+}

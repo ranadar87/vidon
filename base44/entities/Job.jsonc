@@ -1,0 +1,70 @@
+{
+  "name": "Job",
+  "type": "object",
+  "description": "\u05e8\u05d9\u05e6\u05ea \u05d4\u05e4\u05e7\u05d4 \u05d0\u05e1\u05d9\u05e0\u05db\u05e8\u05d5\u05e0\u05d9\u05ea \u05e9\u05dc \u05d1\u05e8\u05d9\u05e3 \u05de\u05d0\u05d5\u05e9\u05e8.",
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "brief_id": {
+      "type": "string"
+    },
+    "brief_version": {
+      "type": "integer",
+      "description": "\u05d4\u05d2\u05e8\u05e1\u05d4 \u05e9\u05e2\u05dc\u05d9\u05d4 \u05e8\u05e5 \u05d4-job"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "\u05d9\u05d9\u05d7\u05d5\u05d3\u05d9 \u2014 \u05de\u05e0\u05d9\u05e2\u05ea \u05e8\u05d9\u05e6\u05d4 \u05db\u05e4\u05d5\u05dc\u05d4"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "briefing",
+        "approved",
+        "generating_assets",
+        "rendering",
+        "review",
+        "delivered",
+        "completed",
+        "failed",
+        "refunded"
+      ],
+      "default": "approved"
+    },
+    "video_type": {
+      "type": "string",
+      "enum": [
+        "image_motion",
+        "ugc_avatar",
+        "generative_scenes",
+        "hybrid"
+      ]
+    },
+    "progress_pct": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 0
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "project_id",
+    "brief_id"
+  ]
+}

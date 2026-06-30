@@ -1,0 +1,56 @@
+{
+  "name": "Project",
+  "type": "object",
+  "description": "\u05d1\u05e7\u05e9\u05ea \u05e1\u05e8\u05d8\u05d5\u05df \u05d1\u05d5\u05d3\u05d3\u05ea \u2014 \u05d4\u05d9\u05d7\u05d9\u05d3\u05d4 \u05d4\u05de\u05e8\u05db\u05d6\u05d9\u05ea.",
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "FK \u05dc\u05dc\u05e7\u05d5\u05d7"
+    },
+    "title": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05e4\u05e8\u05d5\u05d9\u05e7\u05d8/\u05d1\u05e7\u05e9\u05d4"
+    },
+    "goal": {
+      "type": "string",
+      "description": "\u05de\u05d8\u05e8\u05d4 \u05e9\u05d9\u05d5\u05d5\u05e7\u05d9\u05ea \u05d7\u05d5\u05e4\u05e9\u05d9\u05ea"
+    },
+    "vertical": {
+      "type": "string",
+      "description": "\u05d5\u05e8\u05d8\u05d9\u05e7\u05dc"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "briefing",
+        "approved",
+        "generating",
+        "rendering",
+        "review",
+        "delivered",
+        "failed"
+      ],
+      "default": "draft"
+    },
+    "current_brief_id": {
+      "type": "string",
+      "description": "FK \u05dc\u05d1\u05e8\u05d9\u05e3 \u05d4\u05e0\u05d5\u05db\u05d7\u05d9"
+    },
+    "credits_estimate": {
+      "type": "integer",
+      "description": "\u05d4\u05e2\u05e8\u05db\u05ea \u05e7\u05e8\u05d3\u05d9\u05d8\u05d9\u05dd \u05d0\u05d7\u05e8\u05d5\u05e0\u05d4"
+    },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "soft delete"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "Account",
+  "type": "object",
+  "description": "\u05e1\u05d1\u05d9\u05d1\u05ea \u05d4\u05e2\u05d1\u05d5\u05d3\u05d4 / \u05d4\u05d3\u05d9\u05d9\u05e8 (LeadON). \u05e9\u05d5\u05e8\u05e9 \u05d4-multi-tenancy.",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05d3\u05d9\u05d9\u05e8/\u05e1\u05d1\u05d9\u05d1\u05ea \u05d4\u05e2\u05d1\u05d5\u05d3\u05d4"
+    },
+    "slug": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05e7\u05e8\u05d9\u05d0 \u05d9\u05d9\u05d7\u05d5\u05d3\u05d9"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "suspended"
+      ],
+      "default": "active"
+    },
+    "default_markup": {
+      "type": "number",
+      "minimum": 1,
+      "default": 5,
+      "description": "markup \u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc \u05dc\u05ea\u05de\u05d7\u05d5\u05e8"
+    },
+    "credit_value_ils": {
+      "type": "number",
+      "default": 0.15,
+      "description": "\u05e2\u05e8\u05da \u05e7\u05e8\u05d3\u05d9\u05d8 \u05d1\u05e9\"\u05d7"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

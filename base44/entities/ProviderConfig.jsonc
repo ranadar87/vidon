@@ -1,0 +1,56 @@
+{
+  "name": "ProviderConfig",
+  "type": "object",
+  "description": "\u05ea\u05e6\u05d5\u05e8\u05ea \u05e1\u05e4\u05e7 (\u05dc\u05d0-\u05e8\u05d2\u05d9\u05e9\u05d4). markup, \u05de\u05db\u05e1\u05d5\u05ea, enable, \u05d5\u05e9\u05d9\u05e2\u05d5\u05e8\u05d9 \u05e2\u05dc\u05d5\u05ea (rates).",
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "capability": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "tts",
+        "avatar",
+        "captions",
+        "music",
+        "image",
+        "render"
+      ],
+      "description": "\u05d4\u05d9\u05db\u05d5\u05dc\u05ea \u05e9\u05d4\u05e1\u05e4\u05e7 \u05de\u05e1\u05e4\u05e7"
+    },
+    "provider": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05d4\u05e1\u05e4\u05e7"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05e1\u05e4\u05e7 \u05d1\u05e8\u05d9\u05e8\u05ea \u05de\u05d7\u05d3\u05dc \u05dc\u05d9\u05db\u05d5\u05dc\u05ea"
+    },
+    "rate_usd": {
+      "type": "number",
+      "description": "\u05e9\u05d9\u05e2\u05d5\u05e8 \u05e2\u05dc\u05d5\u05ea \u05d1\u05d9\u05d7\u05d9\u05d3\u05d4 (\u05dc\u05ea\u05de\u05d5\u05e0\u05d4 / \u05dc\u05e9\u05e0\u05d9\u05d9\u05d4 / \u05dc-1k \u05ea\u05d5\u05d5\u05d9\u05dd / \u05dc\u05d3\u05e7\u05d4)"
+    },
+    "rate_unit": {
+      "type": "string",
+      "description": "\u05d9\u05d7\u05d9\u05d3\u05ea \u05d4\u05e9\u05d9\u05e2\u05d5\u05e8 (per_image / per_sec / per_1k_chars / per_min / per_track)"
+    },
+    "rate_limit_per_min": {
+      "type": "integer",
+      "description": "\u05de\u05db\u05e1\u05ea \u05e7\u05e6\u05d1 per provider"
+    },
+    "concurrency": {
+      "type": "integer",
+      "description": "\u05de\u05e7\u05d1\u05d9\u05dc\u05d9\u05d5\u05ea \u05de\u05d5\u05ea\u05e8\u05ea"
+    }
+  },
+  "required": [
+    "capability",
+    "provider"
+  ]
+}
