@@ -174,6 +174,72 @@ async function submitAdapter(provider, input) {
   return { providerJobId: `${provider}_${Date.now()}` };
 }
 
+// שליחת בקשת רינדור לשירות Remotion (Railway) inline — מועתק מ-triggerRender כדי
+// להימנע מקריאת functions.invoke פנימית (403). מרנדר אסינכרונית ומחזיר ל-renderWebhook.
+async function submitRender(sr, jobId, brief) {
+  const renderUrl = Deno.env.get("RAILWAY_RENDER_URL");
+  const secret = Deno.env.get("RENDER_WEBHOOK_SECRET");
+  if (!renderUrl || !secret) throw new Error("RAILWAY_RENDER_URL / RENDER_WEBHOOK_SECRET not configured");
+
+  const assets = await sr.entities.Asset.filter({ job_id: jobId });
+  const scenes = (brief.json?.scenes || []).map((s) => {
+    const visual = assets.find(a => a.scene_id === s.id && ["still", "avatar_clip", "broll"].includes(a.type));
+    return {
+      id: s.id,
+      durationSec: s.durationSec || 4,
+      visualUrl: visual?.url || null,
+      visualType: visual?.type || "still",
+      text: s.onScreenText || s.script || "",
+      transition: s.transition || { type: brief.json?.format?.defaultTransition || "fade", durationSec: 0.4 },
+      words: [],
+    };
+  });
+
+  const voiceover = assets.find(a => a.type === "voiceover")?.url || null;
+  const music = assets.find(a => a.type === "music_track")?.url || null;
+  const captionData = assets.find(a => a.type === "caption_data")?.url || null;
+
+  let voiceSegments = [];
+  if (captionData && brief.json?.captions?.enabled) {
+    try {
+      const cd = await fetch(captionData).then(r => r.json());
+      const allWords = cd.words || cd;
+      if (Array.isArray(allWords) && allWords.length) {
+        let acc = 0;
+        for (const sc of scenes) {
+          const start = acc;
+          const end = acc + (sc.durationSec || 4);
+          sc.words = allWords.filter(w => w.start >= start && w.start < end).map(w => ({ word: w.word, start: w.start, end: w.end }));
+          acc = end;
+        }
+        voiceSegments = allWords.map(w => ({ start: w.start, end: w.end }));
+      }
+    } catch (e) {
+      console.error("caption_data parse failed:", e.message);
+    }
+  }
+
+  const renders = await sr.entities.Render.filter({ job_id: jobId });
+  const aspectRatios = renders.map(r => r.aspect_ratio);
+
+  const appId = Deno.env.get("BASE44_APP_ID");
+  const base = `https://${appId}.base44.app/api/apps/${appId}`;
+  const callbackUrl = `${base}/functions/renderWebhook?secret=${encodeURIComponent(secret)}`;
+  const uploadUrl = `${base}/functions/uploadRender?secret=${encodeURIComponent(secret)}`;
+
+  const payload = {
+    jobId, brand: brief.json?.project?.brand || {}, scenes, voiceover, music,
+    captionData, voiceSegments, aspectRatios, callbackUrl, uploadUrl,
+  };
+
+  const res = await fetch(renderUrl.replace(/\/$/, "") + "/render", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-render-secret": secret },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`render service ${res.status}: ${await res.text()}`);
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -304,12 +370,12 @@ async function tick(sr, jobId) {
       await sr.entities.Render.create({ account_id: job.account_id, job_id: jobId, aspect_ratio: ar, status: "rendering" });
     }
     await sr.entities.Job.update(jobId, { state: "rendering", progress_pct: 80 });
-    // הפעלת שירות Remotion החיצוני (Railway) — מרנדר אסינכרונית ומחזיר ל-renderWebhook
+    // הפעלת שירות Remotion החיצוני (Railway) — inline, ללא functions.invoke
+    // (קריאה פנימית מחזירה 403). מרנדר אסינכרונית ומחזיר ל-renderWebhook.
     try {
-      await sr.functions.invoke("triggerRender", { job_id: jobId });
+      await submitRender(sr, jobId, brief);
     } catch (e) {
-      // אם השירות לא מוגדר עדיין — נשאיר את הרינדורים ב-rendering למעקב ידני
-      console.error("triggerRender failed:", e.message);
+      console.error("submitRender failed:", e.message);
     }
     renders = await sr.entities.Render.filter({ job_id: jobId });
   }
