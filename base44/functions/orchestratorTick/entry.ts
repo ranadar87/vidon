@@ -106,8 +106,14 @@ async function runAdapter(sr, provider, input) {
       const scene = input.scene || {};
       return { assets: [{ type: "avatar_clip", url: "https://placeholder/avatar.mp4", scene_id: scene.id, meta: { avatarId: input.avatarId } }], cost: 1.20 };
     }
-    case "scribe":
-      return { assets: [{ type: "caption_data", url: "https://placeholder/captions.json" }], cost: 0.40 };
+    case "scribe": {
+      // כתוביות word-level אמיתיות דרך Scribe STT על האודיו של הקריינות
+      if (!input.audioUrl) throw new Error("scribe: missing voiceover audioUrl");
+      const res = await sr.functions.invoke("transcribeScribe", { audioUrl: input.audioUrl });
+      const data = res.data || res;
+      if (data.error) throw new Error(`transcribeScribe: ${data.error}`);
+      return { assets: [{ type: "caption_data", url: data.url, meta: { words: data.words?.length || 0 } }], cost: data.cost_usd || 0 };
+    }
     case "library":
       return { assets: [{ type: "music_track", url: input.trackRef || "https://placeholder/music.mp3" }], cost: 0 };
     case "suno":
@@ -201,9 +207,19 @@ async function tick(sr, jobId) {
   const byName = Object.fromEntries(steps.map(s => [s.name, s]));
   const depsOk = (s) => (s.depends_on || []).every(d => byName[d]?.status === "succeeded");
 
+  // הזרקת תלויות זמן-ריצה ל-input: Scribe צריך את ה-URL של אודיו הקריינות.
+  const resolveInput = async (s) => {
+    const input = { ...(s.input || {}) };
+    if (s.provider === "scribe" && !input.audioUrl) {
+      const vo = (await sr.entities.Asset.filter({ job_id: jobId, type: "voiceover" }))[0];
+      input.audioUrl = vo?.url;
+    }
+    return input;
+  };
+
   // 1. קידום async steps שב-running (polling fallback) — MVP: מסומנים כמושלמים מיד
   for (const s of steps.filter(s => s.status === "running")) {
-    const r = await runAdapter(sr, s.provider, s.input || {});
+    const r = await runAdapter(sr, s.provider, await resolveInput(s));
     await saveStepResult(sr, job, s, r);
   }
 
@@ -216,7 +232,7 @@ async function tick(sr, jobId) {
       await sr.entities.JobStep.update(s.id, { status: "running", provider_job_id: providerJobId, attempt: (s.attempt || 0) + 1 });
     } else {
       try {
-        const r = await runAdapter(sr, s.provider, s.input || {});
+        const r = await runAdapter(sr, s.provider, await resolveInput(s));
         await saveStepResult(sr, job, s, r);
       } catch (e) {
         await retryOrFail(sr, job, s, e.message);
