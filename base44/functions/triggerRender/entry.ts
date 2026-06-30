@@ -34,12 +34,41 @@ Deno.serve(async (req) => {
         visualUrl: visual?.url || null,
         visualType: visual?.type || "still",
         text: s.onScreenText || s.script || "",
+        // transition library — סוג מעבר ומשך מתוך הבריף (ברירת מחדל fade)
+        transition: s.transition || { type: brief.json?.format?.defaultTransition || "fade", durationSec: 0.4 },
+        // words ימולא בהמשך מתוך caption_data per-scene (word-level timestamps)
+        words: [],
       };
     });
 
     const voiceover = assets.find(a => a.type === "voiceover")?.url || null;
     const music = assets.find(a => a.type === "music_track")?.url || null;
     const captionData = assets.find(a => a.type === "caption_data")?.url || null;
+
+    // עיבוד כתוביות word-level: שולפים את ה-caption_data, ממפים מילים לסצנות לפי
+    // ציר הזמן, ובונים voiceSegments ל-ducking אוטומטי של המוזיקה.
+    let voiceSegments = [];
+    if (captionData && brief.json?.captions?.enabled) {
+      try {
+        const cd = await fetch(captionData).then(r => r.json());
+        const allWords = cd.words || cd; // [{word, start, end}] על ציר הסרטון כולו
+        if (Array.isArray(allWords) && allWords.length) {
+          let acc = 0;
+          for (const sc of scenes) {
+            const start = acc;
+            const end = acc + (sc.durationSec || 4);
+            sc.words = allWords
+              .filter(w => w.start >= start && w.start < end)
+              .map(w => ({ word: w.word, start: w.start, end: w.end }));
+            acc = end;
+          }
+          // קטעי דיבור = כל טווח שבו יש מילים, ל-ducking
+          voiceSegments = allWords.map(w => ({ start: w.start, end: w.end }));
+        }
+      } catch (e) {
+        console.error("caption_data parse failed:", e.message);
+      }
+    }
     const renders = await sr.entities.Render.filter({ job_id });
     const aspectRatios = renders.map(r => r.aspect_ratio);
 
@@ -59,6 +88,7 @@ Deno.serve(async (req) => {
       voiceover,
       music,
       captionData,
+      voiceSegments,
       aspectRatios,
       callbackUrl,
       uploadUrl,
