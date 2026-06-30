@@ -74,14 +74,13 @@ async function runAdapter(sr, provider, input) {
   switch (provider) {
     case "nano_banana":
     case "wavespeed": {
-      // יצירת תמונה אמיתית דרך WaveSpeed (Google Nano Banana)
+      // יצירת תמונה אמיתית דרך WaveSpeed (Google Nano Banana) — inline, ללא קריאת
+      // functions.invoke פנימית (זו נכשלת ב-403 עקב timeout קצר על ה-poll הארוך).
       const scene = input.scene || {};
       const ratio = scene.aspectRatio || "9:16";
       const prompt = buildImagePrompt(scene, input.brand);
       const model = scene.visual?.quality === "pro" ? "nano-banana-pro" : "nano-banana";
-      const res = await sr.functions.invoke("genImageWaveSpeed", { prompt, aspectRatio: ratio, model });
-      const data = res.data || res;
-      if (data.error) throw new Error(`genImageWaveSpeed: ${data.error}`);
+      const data = await genWaveSpeedImage(sr, { prompt, aspectRatio: ratio, model });
       return { assets: [{ type: "still", url: data.url, scene_id: scene.id, meta: { provider_url: data.provider_image_url } }], cost: data.cost_usd || 0 };
     }
     case "openrouter": {
@@ -123,6 +122,47 @@ async function runAdapter(sr, provider, input) {
     default:
       return { assets: [], cost: 0 };
   }
+}
+
+// יצירת תמונה inline דרך WaveSpeed: submit → poll → הורדה והעלאה לאחסון Base44.
+// מועתק מ-genImageWaveSpeed כדי להימנע מקריאת functions.invoke פנימית (403 על poll ארוך).
+const WS_BASE = "https://api.wavespeed.ai/api/v3";
+const WS_COST = { "nano-banana": 0.038, "nano-banana-pro": 0.08 };
+const WS_RATIOS = ["1:1", "3:2", "2:3", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
+
+async function genWaveSpeedImage(sr, { prompt, aspectRatio, model }) {
+  const apiKey = Deno.env.get("WAVESPEED_API_KEY");
+  if (!apiKey) throw new Error("WAVESPEED_API_KEY not configured");
+  const modelName = model === "nano-banana-pro" ? "nano-banana-pro" : "nano-banana";
+  const ratio = WS_RATIOS.includes(aspectRatio) ? aspectRatio : "1:1";
+
+  const submitRes = await fetch(`${WS_BASE}/google/${modelName}/text-to-image`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+    body: JSON.stringify({ prompt, aspect_ratio: ratio, output_format: "png" }),
+  });
+  if (!submitRes.ok) throw new Error(`wavespeed submit ${submitRes.status}: ${await submitRes.text()}`);
+  const submitData = await submitRes.json();
+  const predictionId = submitData?.data?.id || submitData?.id;
+  if (!predictionId) throw new Error("wavespeed returned no prediction id");
+
+  let imageUrl = null;
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 1500));
+    const pollRes = await fetch(`${WS_BASE}/predictions/${predictionId}/result`, {
+      headers: { "Authorization": `Bearer ${apiKey}` },
+    });
+    if (!pollRes.ok) continue;
+    const d = (await pollRes.json())?.data || {};
+    if (d.status === "completed") { imageUrl = (d.outputs && d.outputs[0]) || (d.output && d.output[0]) || d.url; break; }
+    if (d.status === "failed") throw new Error(`wavespeed failed: ${d.error || "unknown"}`);
+  }
+  if (!imageUrl) throw new Error("wavespeed timeout");
+
+  const blob = await fetch(imageUrl).then(r => r.blob());
+  const file = new File([blob], `wavespeed-${predictionId}.png`, { type: "image/png" });
+  const uploaded = await sr.integrations.Core.UploadFile({ file });
+  return { url: uploaded.file_url, cost_usd: WS_COST[modelName], provider_image_url: imageUrl };
 }
 
 async function submitAdapter(provider, input) {
