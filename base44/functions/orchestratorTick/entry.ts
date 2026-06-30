@@ -107,6 +107,22 @@ async function tick(sr, jobId) {
 
   const brief = await sr.entities.Brief.get(job.brief_id);
 
+  // סגירה מוקדמת: אם הרינדורים כבר הושלמו, סוגרים את ה-job מיד —
+  // לפני כל ניסיון לבנות מחדש steps (אחרת ה-job "מתחיל מחדש" בטעות).
+  const existingRenders = await sr.entities.Render.filter({ job_id: jobId });
+  if (existingRenders.length && existingRenders.every(r => r.status === "completed")) {
+    await captureCredits(sr, job);
+    await sr.entities.Job.update(jobId, { state: "completed", progress_pct: 100, completed_at: new Date().toISOString() });
+    await sr.entities.Project.update(job.project_id, { status: "delivered" });
+    return { jobId, state: "completed" };
+  }
+  if (existingRenders.length && existingRenders.some(r => r.status === "failed")) {
+    await refundCredits(sr, job);
+    await sr.entities.Job.update(jobId, { state: "failed" });
+    await sr.entities.Project.update(job.project_id, { status: "failed" });
+    return { jobId, state: "failed" };
+  }
+
   // יצירת JobSteps בפעם הראשונה
   let steps = await sr.entities.JobStep.filter({ job_id: jobId });
   if (steps.length === 0) {
