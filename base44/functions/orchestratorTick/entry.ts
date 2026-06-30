@@ -17,6 +17,7 @@ function buildSteps(brief) {
       name: `visual:${s.id}`,
       provider: s.visual.source === "nano_banana" ? "nano_banana"
         : s.visual.source === "wavespeed" ? "wavespeed"
+        : s.visual.source === "openrouter" ? "openrouter"
         : s.visual.source === "veo" ? "veo"
         : s.visual.source === "kling" ? "kling" : "stock",
       depends_on: [],
@@ -43,6 +44,17 @@ function buildSteps(brief) {
   return steps;
 }
 
+// בניית prompt לתמונה מתוך הסצנה והמותג — משותף לכל ספקי התמונות.
+function buildImagePrompt(scene, brand) {
+  const b = brand || {};
+  return [
+    scene.visual?.prompt || scene.script || scene.onScreenText || "professional marketing scene",
+    b.style ? `style: ${b.style}` : "",
+    Array.isArray(b.colors) && b.colors.length ? `brand colors: ${b.colors.join(", ")}` : "",
+    "cinematic, high quality, professional photography",
+  ].filter(Boolean).join(", ");
+}
+
 // ----- מיפוי adapter לכל ספק. elevenlabs מחובר ל-API אמיתי; השאר stubs להחלפה הדרגתית. -----
 async function runAdapter(sr, provider, input) {
   // ספק סינכרוני קצר — מחזיר assets + cost. בייצור: קריאת HTTP אמיתית לספק.
@@ -51,19 +63,23 @@ async function runAdapter(sr, provider, input) {
     case "wavespeed": {
       // יצירת תמונה אמיתית דרך WaveSpeed (Google Nano Banana)
       const scene = input.scene || {};
-      const brand = input.brand || {};
-      const ratio = (scene.aspectRatio) || "9:16";
-      const promptParts = [
-        scene.visual?.prompt || scene.script || scene.onScreenText || "professional marketing scene",
-        brand.style ? `style: ${brand.style}` : "",
-        Array.isArray(brand.colors) && brand.colors.length ? `brand colors: ${brand.colors.join(", ")}` : "",
-        "cinematic, high quality, professional photography",
-      ].filter(Boolean);
-      const model = provider === "nano_banana" && scene.visual?.quality === "pro" ? "nano-banana-pro" : "nano-banana";
-      const res = await sr.functions.invoke("genImageWaveSpeed", { prompt: promptParts.join(", "), aspectRatio: ratio, model });
+      const ratio = scene.aspectRatio || "9:16";
+      const prompt = buildImagePrompt(scene, input.brand);
+      const model = scene.visual?.quality === "pro" ? "nano-banana-pro" : "nano-banana";
+      const res = await sr.functions.invoke("genImageWaveSpeed", { prompt, aspectRatio: ratio, model });
       const data = res.data || res;
       if (data.error) throw new Error(`genImageWaveSpeed: ${data.error}`);
       return { assets: [{ type: "still", url: data.url, scene_id: scene.id, meta: { provider_url: data.provider_image_url } }], cost: data.cost_usd || 0 };
+    }
+    case "openrouter": {
+      // יצירת תמונה אמיתית דרך OpenRouter Image API
+      const scene = input.scene || {};
+      const ratio = scene.aspectRatio || "9:16";
+      const prompt = buildImagePrompt(scene, input.brand);
+      const res = await sr.functions.invoke("genImageOpenRouter", { prompt, aspectRatio: ratio, model: scene.visual?.model });
+      const data = res.data || res;
+      if (data.error) throw new Error(`genImageOpenRouter: ${data.error}`);
+      return { assets: [{ type: "still", url: data.url, scene_id: scene.id }], cost: data.cost_usd || 0 };
     }
     case "elevenlabs": {
       // קריינות אמיתית מול ElevenLabs דרך פונקציית ttsElevenLabs
