@@ -114,7 +114,11 @@ async function runAdapter(sr, provider, input) {
       return { assets: [{ type: "caption_data", url: data.url, meta: { words: data.words?.length || 0 } }], cost: data.cost_usd || 0 };
     }
     case "library":
-      return { assets: [{ type: "music_track", url: input.trackRef || "https://placeholder/music.mp3" }], cost: 0 };
+      // רק טראק אמיתי (URL http) נשמר כנכס; אחרת אין מוזיקה — אחרת הרינדור נכשל
+      // בניסיון להוריד placeholder לא קיים.
+      return /^https?:\/\//.test(input.trackRef || "")
+        ? { assets: [{ type: "music_track", url: input.trackRef }], cost: 0 }
+        : { assets: [], cost: 0 };
     case "suno":
       return { assets: [{ type: "music_track", url: "https://placeholder/suno.mp3" }], cost: 0.50 };
     case "stock":
