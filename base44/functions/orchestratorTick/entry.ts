@@ -43,14 +43,19 @@ function buildSteps(brief) {
   return steps;
 }
 
-// ----- מיפוי adapter לכל ספק (MVP: stubs שמחזירים assets מוקיים; להחלפה ב-API אמיתי) -----
-async function runAdapter(provider, input) {
+// ----- מיפוי adapter לכל ספק. elevenlabs מחובר ל-API אמיתי; השאר stubs להחלפה הדרגתית. -----
+async function runAdapter(sr, provider, input) {
   // ספק סינכרוני קצר — מחזיר assets + cost. בייצור: קריאת HTTP אמיתית לספק.
   switch (provider) {
     case "nano_banana":
       return { assets: [{ type: "still", url: "https://placeholder/still.png" }], cost: 0.04 };
-    case "elevenlabs":
-      return { assets: [{ type: "voiceover", url: "https://placeholder/vo.mp3" }], cost: 0.30 * ((input.script || "").length / 1000) };
+    case "elevenlabs": {
+      // קריינות אמיתית מול ElevenLabs דרך פונקציית ttsElevenLabs
+      const res = await sr.functions.invoke("ttsElevenLabs", { script: input.script, voiceId: input.voiceId });
+      const data = res.data || res;
+      if (data.error) throw new Error(`ttsElevenLabs: ${data.error}`);
+      return { assets: [{ type: "voiceover", url: data.url, meta: { units: data.units } }], cost: data.cost_usd || 0 };
+    }
     case "scribe":
       return { assets: [{ type: "caption_data", url: "https://placeholder/captions.json" }], cost: 0.40 };
     case "library":
@@ -148,7 +153,7 @@ async function tick(sr, jobId) {
 
   // 1. קידום async steps שב-running (polling fallback) — MVP: מסומנים כמושלמים מיד
   for (const s of steps.filter(s => s.status === "running")) {
-    const r = await runAdapter(s.provider, s.input || {});
+    const r = await runAdapter(sr, s.provider, s.input || {});
     await saveStepResult(sr, job, s, r);
   }
 
@@ -161,7 +166,7 @@ async function tick(sr, jobId) {
       await sr.entities.JobStep.update(s.id, { status: "running", provider_job_id: providerJobId, attempt: (s.attempt || 0) + 1 });
     } else {
       try {
-        const r = await runAdapter(s.provider, s.input || {});
+        const r = await runAdapter(sr, s.provider, s.input || {});
         await saveStepResult(sr, job, s, r);
       } catch (e) {
         await retryOrFail(sr, job, s, e.message);
