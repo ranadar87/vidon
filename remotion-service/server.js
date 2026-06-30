@@ -11,40 +11,12 @@ app.use(express.json({ limit: "10mb" }));
 const PORT = process.env.PORT || 3000;
 const RENDER_SECRET = process.env.RENDER_WEBHOOK_SECRET;
 
-// איתור Chromium שמותקן ע"י Nix — חובה להעביר אותו במפורש ל-Remotion,
-// אחרת Remotion מוריד Chrome Headless Shell משלו שנכשל בגלל ספריות מערכת חסרות.
-// לא מסתמכים על משתנה סביבה בלבד (שעלול לא להיטען), אלא מחפשים בנתיבים האפשריים.
-function resolveBrowserExecutable() {
-  const candidates = [
-    process.env.REMOTION_CHROME_EXECUTABLE,
-    process.env.PUPPETEER_EXECUTABLE_PATH,
-    "/root/.nix-profile/bin/chromium",
-    "/nix/var/nix/profiles/default/bin/chromium",
-    "/usr/bin/chromium",
-    "/usr/bin/chromium-browser",
-    "/usr/bin/google-chrome",
-  ].filter(Boolean);
-
-  for (const p of candidates) {
-    try {
-      if (fs.existsSync(p)) return p;
-    } catch (_e) { /* ignore */ }
-  }
-
-  // נסיון אחרון: לחפש ב-PATH דרך `which`
-  try {
-    const { execSync } = require("child_process");
-    const found = execSync("which chromium || which chromium-browser || which google-chrome", {
-      encoding: "utf8",
-    }).trim();
-    if (found && fs.existsSync(found)) return found;
-  } catch (_e) { /* ignore */ }
-
-  return undefined;
-}
-
-const BROWSER_EXECUTABLE = resolveBrowserExecutable();
-console.log("Resolved browser executable:", BROWSER_EXECUTABLE || "(none found — Remotion will download its own)");
+// הדפדפן מותקן ב-Dockerfile דרך `npx remotion browser ensure`.
+// כשמשאירים browserExecutable כ-undefined, Remotion מוצא לבד את הדפדפן
+// המנוהל שהתקין, וספריות המערכת שב-Dockerfile מאפשרות לו לרוץ.
+// אפשר עדיין לכפות נתיב דרך משתנה סביבה אם צריך.
+const BROWSER_EXECUTABLE = process.env.REMOTION_CHROME_EXECUTABLE || undefined;
+console.log("Browser executable:", BROWSER_EXECUTABLE || "(managed by Remotion)");
 
 // מיפוי aspect ratio לרזולוציה
 const DIMENSIONS = {
