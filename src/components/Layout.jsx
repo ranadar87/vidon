@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, MessageSquarePlus, Library, Mic2, Users, Settings, Wallet, Clapperboard } from 'lucide-react';
+import { LayoutDashboard, MessageSquarePlus, Library, Mic2, Users, Settings, Wallet, Activity, Clapperboard } from 'lucide-react';
 
 const nav = [
   { to: '/', label: 'דאשבורד', icon: LayoutDashboard },
@@ -9,6 +9,7 @@ const nav = [
   { to: '/voices', label: 'קולות', icon: Mic2 },
   { to: '/clients', label: 'לקוחות', icon: Users },
   { to: '/budget', label: 'תקציב', icon: Wallet },
+  { to: '/observability', label: 'ניטור', icon: Activity },
   { to: '/settings', label: 'הגדרות', icon: Settings },
 ];
 

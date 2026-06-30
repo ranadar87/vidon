@@ -21,6 +21,7 @@ import Library from '@/pages/Library';
 import Voices from '@/pages/Voices';
 import Clients from '@/pages/Clients';
 import Budget from '@/pages/Budget';
+import Observability from '@/pages/Observability';
 import Settings from '@/pages/Settings';
 import { Navigate } from 'react-router-dom';
 // Add page imports here
@@ -66,6 +67,7 @@ const AuthenticatedApp = () => {
           <Route path="/voices" element={<Voices />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/budget" element={<Budget />} />
+          <Route path="/observability" element={<Observability />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
