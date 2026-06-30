@@ -6,6 +6,23 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import Layout from '@/components/Layout';
+import Login from '@/pages/Login';
+import Register from '@/pages/Register';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
+import Dashboard from '@/pages/Dashboard';
+import NewVideo from '@/pages/NewVideo';
+import BriefEditor from '@/pages/BriefEditor';
+import RenderProgress from '@/pages/RenderProgress';
+import ProjectDetail from '@/pages/ProjectDetail';
+import Library from '@/pages/Library';
+import Voices from '@/pages/Voices';
+import Clients from '@/pages/Clients';
+import Budget from '@/pages/Budget';
+import Settings from '@/pages/Settings';
+import { Navigate } from 'react-router-dom';
 // Add page imports here
 
 const AuthenticatedApp = () => {
@@ -34,7 +51,24 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/new" element={<NewVideo />} />
+          <Route path="/brief/:briefId" element={<BriefEditor />} />
+          <Route path="/render/:jobId" element={<RenderProgress />} />
+          <Route path="/project/:projectId" element={<ProjectDetail />} />
+          <Route path="/library" element={<Library />} />
+          <Route path="/voices" element={<Voices />} />
+          <Route path="/clients" element={<Clients />} />
+          <Route path="/budget" element={<Budget />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
+      </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
