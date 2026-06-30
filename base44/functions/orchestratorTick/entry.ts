@@ -21,7 +21,7 @@ function buildSteps(brief) {
         : s.visual.source === "kling" ? "kling" : "stock",
       depends_on: [],
       input: { scene: s, brand: brief.project.brand },
-      async: ["wavespeed", "veo", "kling", "heygen"].includes(s.visual.source),
+      async: ["veo", "kling", "heygen"].includes(s.visual.source),
     });
   }
 
@@ -48,7 +48,23 @@ async function runAdapter(sr, provider, input) {
   // ספק סינכרוני קצר — מחזיר assets + cost. בייצור: קריאת HTTP אמיתית לספק.
   switch (provider) {
     case "nano_banana":
-      return { assets: [{ type: "still", url: "https://placeholder/still.png" }], cost: 0.04 };
+    case "wavespeed": {
+      // יצירת תמונה אמיתית דרך WaveSpeed (Google Nano Banana)
+      const scene = input.scene || {};
+      const brand = input.brand || {};
+      const ratio = (scene.aspectRatio) || "9:16";
+      const promptParts = [
+        scene.visual?.prompt || scene.script || scene.onScreenText || "professional marketing scene",
+        brand.style ? `style: ${brand.style}` : "",
+        Array.isArray(brand.colors) && brand.colors.length ? `brand colors: ${brand.colors.join(", ")}` : "",
+        "cinematic, high quality, professional photography",
+      ].filter(Boolean);
+      const model = provider === "nano_banana" && scene.visual?.quality === "pro" ? "nano-banana-pro" : "nano-banana";
+      const res = await sr.functions.invoke("genImageWaveSpeed", { prompt: promptParts.join(", "), aspectRatio: ratio, model });
+      const data = res.data || res;
+      if (data.error) throw new Error(`genImageWaveSpeed: ${data.error}`);
+      return { assets: [{ type: "still", url: data.url, scene_id: scene.id, meta: { provider_url: data.provider_image_url } }], cost: data.cost_usd || 0 };
+    }
     case "elevenlabs": {
       // קריינות אמיתית מול ElevenLabs דרך פונקציית ttsElevenLabs
       const res = await sr.functions.invoke("ttsElevenLabs", { script: input.script, voiceId: input.voiceId });
@@ -217,7 +233,7 @@ async function tick(sr, jobId) {
 
 async function saveStepResult(sr, job, step, r) {
   for (const a of (r.assets || [])) {
-    await sr.entities.Asset.create({ account_id: job.account_id, job_id: job.id, job_step_id: step.id, type: a.type, url: a.url, meta: a.meta || {} });
+    await sr.entities.Asset.create({ account_id: job.account_id, job_id: job.id, job_step_id: step.id, type: a.type, url: a.url, scene_id: a.scene_id, meta: a.meta || {} });
   }
   await sr.entities.ApiCostLog.create({ account_id: job.account_id, job_id: job.id, job_step_id: step.id, provider: step.provider, step: step.name, cost_usd: r.cost || 0 });
   await sr.entities.JobStep.update(step.id, { status: "succeeded", output: { assets: r.assets } });
