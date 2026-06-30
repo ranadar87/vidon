@@ -228,23 +228,25 @@ async function tick(sr, jobId) {
     }
   }
 
-  // 2. הרצת steps זמינים
-  for (const s of steps.filter(s => s.status === "pending")) {
-    if (!depsOk(s)) continue;
-    // wavespeed/nano_banana רצים סינכרונית (runAdapter מחזיר תמונה מיד); רק veo/kling/heygen אסינכרוניים.
-    const isAsync = ["veo", "kling", "heygen"].includes(s.provider);
-    if (isAsync) {
-      const { providerJobId } = await submitAdapter(s.provider, s.input || {});
-      await sr.entities.JobStep.update(s.id, { status: "running", provider_job_id: providerJobId, attempt: (s.attempt || 0) + 1 });
-    } else {
-      try {
-        const r = await runAdapter(sr, s.provider, await resolveInput(s));
-        await saveStepResult(sr, job, s, r);
-      } catch (e) {
-        await retryOrFail(sr, job, s, e.message);
-      }
-    }
+  // 2. הרצת steps זמינים. שלבים סינכרוניים-כבדים (יצירת תמונה/קריינות) רצים במקביל
+  // עם Promise.allSettled — אחרת ריצה סדרתית של כמה תמונות חורגת מה-timeout.
+  const ready = steps.filter(s => s.status === "pending" && depsOk(s));
+  const asyncReady = ready.filter(s => ["veo", "kling", "heygen"].includes(s.provider));
+  const syncReady = ready.filter(s => !["veo", "kling", "heygen"].includes(s.provider));
+
+  for (const s of asyncReady) {
+    const { providerJobId } = await submitAdapter(s.provider, s.input || {});
+    await sr.entities.JobStep.update(s.id, { status: "running", provider_job_id: providerJobId, attempt: (s.attempt || 0) + 1 });
   }
+
+  await Promise.allSettled(syncReady.map(async (s) => {
+    try {
+      const r = await runAdapter(sr, s.provider, await resolveInput(s));
+      await saveStepResult(sr, job, s, r);
+    } catch (e) {
+      await retryOrFail(sr, job, s, e.message);
+    }
+  }));
 
   // refresh
   steps = await sr.entities.JobStep.filter({ job_id: jobId });
