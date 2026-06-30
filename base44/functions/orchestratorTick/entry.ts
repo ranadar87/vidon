@@ -217,16 +217,22 @@ async function tick(sr, jobId) {
     return input;
   };
 
-  // 1. קידום async steps שב-running (polling fallback) — MVP: מסומנים כמושלמים מיד
+  // 1. קידום async steps שב-running (polling fallback) — MVP: מסומנים כמושלמים מיד.
+  // עטוף ב-try/catch כדי שכשל ספק בודד ייפול ל-retryOrFail ולא יקריס את כל ה-tick.
   for (const s of steps.filter(s => s.status === "running")) {
-    const r = await runAdapter(sr, s.provider, await resolveInput(s));
-    await saveStepResult(sr, job, s, r);
+    try {
+      const r = await runAdapter(sr, s.provider, await resolveInput(s));
+      await saveStepResult(sr, job, s, r);
+    } catch (e) {
+      await retryOrFail(sr, job, s, e.message);
+    }
   }
 
   // 2. הרצת steps זמינים
   for (const s of steps.filter(s => s.status === "pending")) {
     if (!depsOk(s)) continue;
-    const isAsync = ["wavespeed", "veo", "kling", "heygen"].includes(s.provider);
+    // wavespeed/nano_banana רצים סינכרונית (runAdapter מחזיר תמונה מיד); רק veo/kling/heygen אסינכרוניים.
+    const isAsync = ["veo", "kling", "heygen"].includes(s.provider);
     if (isAsync) {
       const { providerJobId } = await submitAdapter(s.provider, s.input || {});
       await sr.entities.JobStep.update(s.id, { status: "running", provider_job_id: providerJobId, attempt: (s.attempt || 0) + 1 });
