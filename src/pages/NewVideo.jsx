@@ -17,23 +17,27 @@ export default function NewVideo() {
   const [pricing, setPricing] = useState(null);
   const [readyForApproval, setReadyForApproval] = useState(false);
   const [title, setTitle] = useState('');
+  const [vertical, setVertical] = useState('');
+  const [presets, setPresets] = useState([]);
   const [started, setStarted] = useState(false);
   const endRef = useRef(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, sending]);
+  useEffect(() => { base44.entities.Preset.list('-created_date', 100).then(setPresets); }, []);
 
   const startProject = async () => {
     if (!title.trim()) return;
-    const me = await base44.auth.me();
     const accounts = await base44.entities.Account.list();
     const p = await base44.entities.Project.create({
       account_id: accounts[0]?.id,
       title: title.trim(),
+      vertical: vertical || undefined,
       status: 'draft',
     });
     setProject(p);
     setStarted(true);
-    setMessages([{ role: 'assistant', content: 'שלום! ספרו לי מה המטרה השיווקית — לדוגמה: "אני רוצה לקדם ניקוי מזגנים בגוש דן ולהשיג לידים."' }]);
+    const presetNote = vertical ? ` טענתי את תבנית הוורטיקל "${vertical}" — נתחיל ממנה.` : '';
+    setMessages([{ role: 'assistant', content: `שלום! ספרו לי מה המטרה השיווקית — לדוגמה: "אני רוצה לקדם ניקוי מזגנים בגוש דן ולהשיג לידים."${presetNote}` }]);
   };
 
   const send = async () => {
@@ -74,6 +78,15 @@ export default function NewVideo() {
             <div className="flex items-center gap-2 text-primary"><Sparkles className="w-5 h-5" /><span className="font-semibold">בואו נתחיל</span></div>
             <p className="text-sm text-muted-foreground">תנו שם לפרויקט. לאחר מכן תנהלו שיחה בעברית שתבנה את הבריף ותתמחר אותו.</p>
             <Input placeholder="שם הפרויקט (למשל: ניקוי מזגנים — גוש דן)" value={title} onChange={(e) => setTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && startProject()} />
+            {presets.length > 0 && (
+              <div>
+                <label className="text-xs text-muted-foreground">ורטיקל / preset (אופציונלי — נטען אוטומטית לצ׳אט)</label>
+                <select className="w-full h-10 rounded-md border bg-background px-3 text-sm mt-1" value={vertical} onChange={(e) => setVertical(e.target.value)}>
+                  <option value="">ללא — שיחה חופשית</option>
+                  {presets.map((p) => <option key={p.id} value={p.vertical}>{p.name} ({p.vertical})</option>)}
+                </select>
+              </div>
+            )}
             <Button className="w-full" onClick={startProject} disabled={!title.trim()}>התחל</Button>
           </Card>
         </div>
