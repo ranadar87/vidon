@@ -43,11 +43,13 @@ Deno.serve(async (req) => {
     const renders = await sr.entities.Render.filter({ job_id });
     const aspectRatios = renders.map(r => r.aspect_ratio);
 
-    // callback URL חוזר ל-renderWebhook עם ה-secret
-    const appId = Deno.env.get("BASE44_APP_ID");
-    const callbackUrl = `${url_origin(req)}/api/apps/${appId}/functions/renderWebhook?secret=${encodeURIComponent(secret)}`;
+    // callback URL חוזר ל-renderWebhook עם ה-secret.
+    // משתמשים בפורמט הציבורי /functions/<name> (לא /api/apps/...) כדי שהקריאה
+    // החיצונית מ-Railway תאומת כראוי ולא תחזור עם 401.
+    const base = url_origin(req);
+    const callbackUrl = `${base}/functions/renderWebhook?secret=${encodeURIComponent(secret)}`;
     // uploadUrl — שירות הרינדור מעלה אליו את ה-MP4, והוא נשמר באחסון Base44
-    const uploadUrl = `${url_origin(req)}/api/apps/${appId}/functions/uploadRender?secret=${encodeURIComponent(secret)}`;
+    const uploadUrl = `${base}/functions/uploadRender?secret=${encodeURIComponent(secret)}`;
 
     const payload = {
       jobId: job_id,

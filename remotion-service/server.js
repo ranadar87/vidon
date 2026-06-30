@@ -10,6 +10,9 @@ app.use(express.json({ limit: "10mb" }));
 
 const PORT = process.env.PORT || 3000;
 const RENDER_SECRET = process.env.RENDER_WEBHOOK_SECRET;
+// נתיב ל-Chromium שמותקן ע"י Nix — חובה להעביר אותו במפורש ל-Remotion,
+// אחרת Remotion מוריד Chrome Headless Shell משלו שנכשל בגלל ספריות מערכת חסרות.
+const BROWSER_EXECUTABLE = process.env.REMOTION_CHROME_EXECUTABLE || undefined;
 
 // מיפוי aspect ratio לרזולוציה
 const DIMENSIONS = {
@@ -76,6 +79,8 @@ async function renderJob(payload) {
         serveUrl,
         id: "VidonVideo",
         inputProps,
+        browserExecutable: BROWSER_EXECUTABLE,
+        chromiumOptions: { gl: "swangle" },
       });
 
       const outPath = path.join(os.tmpdir(), `${jobId}-${ar.replace(":", "x")}.mp4`);
@@ -85,6 +90,8 @@ async function renderJob(payload) {
         codec: "h264",
         outputLocation: outPath,
         inputProps,
+        browserExecutable: BROWSER_EXECUTABLE,
+        chromiumOptions: { gl: "swangle" },
       });
 
       // העלאה לאחסון Base44 דרך פונקציית uploadRender
