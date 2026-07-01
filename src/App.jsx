@@ -16,6 +16,7 @@ import Dashboard from '@/pages/Dashboard';
 import NewVideo from '@/pages/NewVideo';
 import BriefEditor from '@/pages/BriefEditor';
 import RenderProgress from '@/pages/RenderProgress';
+import Storyboard from '@/pages/Storyboard';
 import ProjectDetail from '@/pages/ProjectDetail';
 import Library from '@/pages/Library';
 import Voices from '@/pages/Voices';
@@ -62,6 +63,7 @@ const AuthenticatedApp = () => {
           <Route path="/new" element={<NewVideo />} />
           <Route path="/brief/:briefId" element={<BriefEditor />} />
           <Route path="/render/:jobId" element={<RenderProgress />} />
+          <Route path="/storyboard/:jobId" element={<Storyboard />} />
           <Route path="/project/:projectId" element={<ProjectDetail />} />
           <Route path="/library" element={<Library />} />
           <Route path="/voices" element={<Voices />} />

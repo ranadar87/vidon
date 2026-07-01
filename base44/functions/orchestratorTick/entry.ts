@@ -368,6 +368,8 @@ async function tick(sr, jobId, cfgMap) {
   let job = await sr.entities.Job.get(jobId);
   if (!job) return { jobId, skipped: "not found" };
   if (["completed", "failed", "refunded", "delivered"].includes(job.state)) return { jobId, skipped: job.state };
+  // review = ממתין לאישור המשתמש בסטוריבורד. ה-tick לא נוגע — רק approve_render יזיז אותו.
+  if (job.state === "review") return { jobId, skipped: "review (awaiting approval)" };
 
   // lease (best-effort)
   const now = Date.now();
@@ -472,15 +474,13 @@ async function tick(sr, jobId, cfgMap) {
     const pct = steps.length ? Math.min(75, Math.round((done / steps.length) * 75)) : 0;
     if (!allSucceeded && !anyFailed) await sr.entities.Job.update(jobId, { progress_pct: pct });
 
-    // הפעלת רינדור כשכל הנכסים מוכנים
+    // כל הנכסים מוכנים → עצירה ב-review (Storyboard preview) לפני הרינדור המלא.
+    // המשתמש מאשר במסך הסטוריבורד, מה שמפעיל action:"approve_render" (למטה).
     renders = await sr.entities.Render.filter({ job_id: jobId });
-    if (allSucceeded && renders.length === 0) {
-      for (const ar of brief.json.format.aspectRatios) {
-        await sr.entities.Render.create({ account_id: job.account_id, job_id: jobId, aspect_ratio: ar, status: "rendering" });
-      }
-      await sr.entities.Job.update(jobId, { state: "rendering", progress_pct: 80 });
-      try { await submitRender(sr, jobId, brief); } catch (e) { console.error("submitRender failed:", e.message); }
-      renders = await sr.entities.Render.filter({ job_id: jobId });
+    if (allSucceeded && renders.length === 0 && job.state !== "review") {
+      await sr.entities.Job.update(jobId, { state: "review", progress_pct: 75, lease_until: null });
+      await sr.entities.Project.update(job.project_id, { status: "review" });
+      return { jobId, state: "review" };
     }
 
     // סגירה
@@ -517,6 +517,24 @@ Deno.serve(async (req) => {
       const resumed = await resumeJob(sr, body.job_id);
       const ticked = await tick(sr, body.job_id, cfgMap);
       return Response.json({ resumed, ticked });
+    }
+
+    // approve_render — המשתמש אישר את הסטוריבורד → שולחים לרינדור המלא
+    if (body.action === "approve_render" && body.job_id) {
+      const job = await sr.entities.Job.get(body.job_id);
+      if (!job) return Response.json({ error: "not found" }, { status: 404 });
+      if (job.state !== "review") return Response.json({ error: "job not in review", state: job.state }, { status: 409 });
+      const brief = await sr.entities.Brief.get(job.brief_id);
+      const existing = await sr.entities.Render.filter({ job_id: body.job_id });
+      if (existing.length === 0) {
+        for (const ar of brief.json.format.aspectRatios) {
+          await sr.entities.Render.create({ account_id: job.account_id, job_id: body.job_id, aspect_ratio: ar, status: "rendering" });
+        }
+      }
+      await sr.entities.Job.update(body.job_id, { state: "rendering", progress_pct: 80, lease_until: null });
+      await sr.entities.Project.update(job.project_id, { status: "rendering" });
+      try { await submitRender(sr, body.job_id, brief); } catch (e) { console.error("approve_render submitRender:", e.message); }
+      return Response.json({ success: true, state: "rendering" });
     }
 
     let jobIds = [];

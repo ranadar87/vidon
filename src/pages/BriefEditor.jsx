@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2, CheckCircle2, Film, Mic2, Music, Type } from 'lucide-react';
+import { Loader2, CheckCircle2, Film, Mic2, Music, Type, Sparkles } from 'lucide-react';
+import VariationsDialog from '@/components/VariationsDialog';
 
 export default function BriefEditor() {
   const { briefId } = useParams();
@@ -15,6 +16,7 @@ export default function BriefEditor() {
   const [brief, setBrief] = useState(null);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
+  const [showVariations, setShowVariations] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -31,8 +33,8 @@ export default function BriefEditor() {
       if (res.data.error) {
         toast({ title: 'האישור נכשל', description: (res.data.details || [res.data.error]).join(', '), variant: 'destructive' });
       } else {
-        toast({ title: 'הבריף אושר', description: `${res.data.credits_held} קרדיטים הוקפאו. ההפקה החלה.` });
-        navigate(`/render/${res.data.job.id}`);
+        toast({ title: 'הבריף אושר', description: `${res.data.credits_held} קרדיטים הוקפאו. הנכסים בהכנה — תראה תצוגה מקדימה בקרוב.` });
+        navigate(`/storyboard/${res.data.job.id}`);
       }
     } catch (e) {
       toast({ title: 'שגיאה', description: e.message, variant: 'destructive' });
@@ -52,7 +54,11 @@ export default function BriefEditor() {
         title="עריכת בריף"
         subtitle={`גרסה ${brief.version} · ${j.format?.videoType || ''}`}
         actions={
-          !approved && (
+          approved ? (
+            <Button variant="outline" onClick={() => setShowVariations(true)} className="gap-2">
+              <Sparkles className="w-4 h-4" /> ייצר וריאציות A/B
+            </Button>
+          ) : (
             <Button onClick={approve} disabled={approving} className="gap-2">
               {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               אשר והפק ({j.cost?.credits} קרדיטים)
@@ -128,6 +134,13 @@ export default function BriefEditor() {
           </Card>
         )}
       </div>
+
+      <VariationsDialog
+        open={showVariations}
+        onOpenChange={setShowVariations}
+        briefId={briefId}
+        onCreated={() => navigate(`/project/${brief.project_id}`)}
+      />
     </div>
   );
 }
