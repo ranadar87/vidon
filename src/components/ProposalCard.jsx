@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import PackageSelector from '@/components/PackageSelector';
 import {
   Film, Mic, Captions, Music, Layers, Sparkles, Check, Loader2,
   ArrowLeft, Image as ImageIcon, Clapperboard, Coins,
@@ -40,12 +41,17 @@ function sceneText(s) {
   return typeof s.onScreenText === 'string' ? s.onScreenText : '';
 }
 
-export default function ProposalCard({ briefId, briefJson, pricing, recommendation }) {
+export default function ProposalCard({ briefId, briefJson, pricing, recommendation, packages, selectedPackage, onSelectPackage }) {
   const navigate = useNavigate();
   const [approving, setApproving] = useState(false);
   const [error, setError] = useState('');
 
   const j = briefJson || {};
+  const pkgs = packages && packages.length ? packages : (j.packages || []);
+  const selectedTier = selectedPackage || j.selected_package;
+  const activePkg = pkgs.find((p) => p.tier === selectedTier);
+  // המחיר המוצג משקף את החבילה שנבחרה (אם קיימת) — אחרת תמחור הבסיס
+  const displayCredits = activePkg?.credits ?? pricing?.credits;
   const rec = recommendation || j.recommendation || {};
   const vt = j.format?.videoType || rec.videoType;
   const typeInfo = VIDEO_TYPE_LABELS[vt] || { label: vt || 'סרטון', desc: '' };
@@ -170,23 +176,35 @@ export default function ProposalCard({ briefId, briefJson, pricing, recommendati
         </div>
       )}
 
+      {/* בורר חבילות איכות */}
+      {pkgs.length > 0 && (
+        <PackageSelector packages={pkgs} selected={selectedTier} onSelect={(p) => onSelectPackage?.(p)} />
+      )}
+
       {/* עלות + פירוט */}
-      {pricing && (
+      {(activePkg || pricing) && (
         <div className="rounded-lg bg-accent p-3 space-y-2">
           <div className="flex items-baseline justify-between">
-            <span className="text-sm font-semibold">עלות כוללת</span>
-            <span className="text-2xl font-bold font-display">{pricing.credits} קרדיטים</span>
+            <span className="text-sm font-semibold">
+              עלות כוללת{activePkg ? ` · ${activePkg.tier_label}` : ''}
+            </span>
+            <span className="text-2xl font-bold font-display">{displayCredits} קרדיטים</span>
           </div>
-          <div className="text-xs text-muted-foreground">עלות API: ${pricing.totalApiCostUsd?.toFixed(2)} · markup ×{pricing.markup}</div>
-          {Array.isArray(pricing.breakdown) && (
-            <div className="space-y-0.5 pt-1 border-t border-border/50">
-              {pricing.breakdown.filter((b) => b.cost > 0).map((b, i) => (
-                <div key={i} className="flex justify-between text-xs text-muted-foreground">
-                  <span>{b.step} · {PROVIDER_LABELS[b.provider] || b.provider}</span>
-                  <span>${b.cost.toFixed(3)}</span>
+          {activePkg ? (
+            <>
+              <div className="text-xs text-muted-foreground">
+                {activePkg.strategy_label} · עלות API: ${activePkg.total_api_cost_usd?.toFixed(2)}
+              </div>
+              {Array.isArray(activePkg.steps) && (
+                <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/50">
+                  {[...new Set(activePkg.steps.filter((s) => s.model).map((s) => s.model))].map((m, i) => (
+                    <Badge key={i} variant="secondary" className="text-[10px]">{m}</Badge>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
+          ) : (
+            <div className="text-xs text-muted-foreground">עלות API: ${pricing.totalApiCostUsd?.toFixed(2)} · markup ×{pricing.markup}</div>
           )}
         </div>
       )}
@@ -195,7 +213,7 @@ export default function ProposalCard({ briefId, briefJson, pricing, recommendati
 
       {/* אישור */}
       <div className="flex gap-2">
-        <Button className="flex-1 gap-2" onClick={approve} disabled={approving || !pricing}>
+        <Button className="flex-1 gap-2" onClick={approve} disabled={approving || (!pricing && !activePkg)}>
           {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
           {approving ? 'מאשר...' : 'אשר והתחל הפקה'}
         </Button>

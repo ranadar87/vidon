@@ -1,0 +1,129 @@
+{
+  "name": "ModelCatalog",
+  "type": "object",
+  "description": "\u05e7\u05d8\u05dc\u05d5\u05d2 \u05de\u05d3\u05d5\u05d9\u05e7 \u05e9\u05dc \u05db\u05dc \u05de\u05d5\u05d3\u05dc\u05d9 \u05d4-AI \u05d4\u05d6\u05de\u05d9\u05e0\u05d9\u05dd (\u05d5\u05d9\u05d3\u05d0\u05d5, \u05ea\u05de\u05d5\u05e0\u05d4, \u05e7\u05e8\u05d9\u05d9\u05e0\u05d5\u05ea, \u05d0\u05d5\u05d5\u05d8\u05d0\u05e8). \u05d4\u05de\u05e0\u05d5\u05e2 \u05d4\u05d7\u05db\u05dd \u05d1\u05d5\u05d7\u05e8 \u05de\u05db\u05d0\u05df \u05d0\u05ea \u05d4\u05de\u05d5\u05d3\u05dc \u05d4\u05de\u05ea\u05d0\u05d9\u05dd \u05dc\u05db\u05dc \u05e9\u05dc\u05d1 \u05d1\u05d4\u05e4\u05e7\u05d4, \u05dc\u05e4\u05d9 \u05d9\u05db\u05d5\u05dc\u05ea, \u05de\u05d5\u05d3\u05dc\u05d9\u05d5\u05ea \u05d5\u05e8\u05de\u05ea \u05d0\u05d9\u05db\u05d5\u05ea.",
+  "properties": {
+    "account_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "wavespeed",
+        "openrouter",
+        "elevenlabs",
+        "heygen",
+        "remotion",
+        "library"
+      ],
+      "description": "\u05e1\u05e4\u05e7 \u05d4-API"
+    },
+    "model_key": {
+      "type": "string",
+      "description": "\u05de\u05d6\u05d4\u05d4 \u05d4\u05de\u05d5\u05d3\u05dc \u05d0\u05e6\u05dc \u05d4\u05e1\u05e4\u05e7 (\u05dc\u05de\u05e9\u05dc google/veo-3.1-fast \u05d0\u05d5 wavespeed-ai/flux-dev)"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "\u05e9\u05dd \u05ea\u05e6\u05d5\u05d2\u05d4 \u05e7\u05e8\u05d9\u05d0"
+    },
+    "capability": {
+      "type": "string",
+      "enum": [
+        "text_to_video",
+        "image_to_video",
+        "text_to_image",
+        "image_to_image",
+        "avatar",
+        "lipsync",
+        "tts",
+        "music",
+        "captions",
+        "render"
+      ],
+      "description": "\u05d4\u05d9\u05db\u05d5\u05dc\u05ea \u05e9\u05d4\u05de\u05d5\u05d3\u05dc \u05de\u05e1\u05e4\u05e7"
+    },
+    "input_modalities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "text",
+          "image",
+          "audio",
+          "video"
+        ]
+      },
+      "description": "\u05de\u05d5\u05d3\u05dc\u05d9\u05d5\u05ea \u05e7\u05dc\u05d8"
+    },
+    "output_modality": {
+      "type": "string",
+      "enum": [
+        "video",
+        "image",
+        "audio"
+      ],
+      "description": "\u05de\u05d5\u05d3\u05dc\u05d9\u05d5\u05ea \u05e4\u05dc\u05d8"
+    },
+    "quality_tier": {
+      "type": "string",
+      "enum": [
+        "economy",
+        "standard",
+        "premium"
+      ],
+      "description": "\u05e8\u05de\u05ea \u05d0\u05d9\u05db\u05d5\u05ea \u2014 \u05dc\u05d1\u05d7\u05d9\u05e8\u05ea \u05d7\u05d1\u05d9\u05dc\u05d5\u05ea \u05d6\u05d5\u05dc/\u05d1\u05d9\u05e0\u05d5\u05e0\u05d9/\u05d9\u05e7\u05e8"
+    },
+    "rate_usd": {
+      "type": "number",
+      "description": "\u05e2\u05dc\u05d5\u05ea \u05dc\u05d9\u05d7\u05d9\u05d3\u05d4 \u05d1-USD"
+    },
+    "rate_unit": {
+      "type": "string",
+      "enum": [
+        "per_second",
+        "per_image",
+        "per_1k_chars",
+        "per_min",
+        "per_track"
+      ],
+      "description": "\u05d9\u05d7\u05d9\u05d3\u05ea \u05d4\u05d7\u05d9\u05d5\u05d1"
+    },
+    "max_duration_sec": {
+      "type": "number",
+      "description": "\u05de\u05e9\u05da \u05de\u05e7\u05e1\u05d9\u05de\u05dc\u05d9 \u05dc\u05e7\u05dc\u05d9\u05e4 (\u05d5\u05d9\u05d3\u05d0\u05d5)"
+    },
+    "supports_audio": {
+      "type": "boolean",
+      "default": false,
+      "description": "\u05de\u05d9\u05d9\u05e6\u05e8 \u05d0\u05d5\u05d3\u05d9\u05d5 \u05de\u05e1\u05d5\u05e0\u05db\u05e8\u05df \u05de\u05d5\u05d1\u05e0\u05d4"
+    },
+    "aspect_ratios": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "\u05d9\u05d7\u05e1\u05d9 \u05ea\u05e6\u05d5\u05d2\u05d4 \u05e0\u05ea\u05de\u05db\u05d9\u05dd"
+    },
+    "resolution": {
+      "type": "string",
+      "description": "\u05e8\u05d6\u05d5\u05dc\u05d5\u05e6\u05d9\u05d4 \u05de\u05e7\u05e1\u05d9\u05de\u05dc\u05d9\u05ea, \u05dc\u05de\u05e9\u05dc 1080p"
+    },
+    "strengths": {
+      "type": "string",
+      "description": "\u05d7\u05d5\u05d6\u05e7\u05d5\u05ea \u05d4\u05de\u05d5\u05d3\u05dc \u2014 \u05e2\u05d5\u05d6\u05e8 \u05dc\u05de\u05e0\u05d5\u05e2 \u05dc\u05d1\u05d7\u05d5\u05e8"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "provider",
+    "model_key",
+    "capability",
+    "quality_tier"
+  ]
+}

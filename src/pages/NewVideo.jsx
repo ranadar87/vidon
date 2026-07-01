@@ -18,6 +18,8 @@ export default function NewVideo() {
   const [pricing, setPricing] = useState(null);
   const [recommendation, setRecommendation] = useState(null);
   const [briefJson, setBriefJson] = useState(null);
+  const [packages, setPackages] = useState([]);
+  const [selectedPackage, setSelectedPackage] = useState(null);
   const [readyForApproval, setReadyForApproval] = useState(false);
   const [title, setTitle] = useState('');
   const [vertical, setVertical] = useState('');
@@ -66,12 +68,28 @@ export default function NewVideo() {
         setMessages([...newMessages, { role: 'assistant', content: d.assistant_message }]);
         if (d.pricing) setPricing(d.pricing);
         if (d.recommendation) setRecommendation(d.recommendation);
+        if (d.packages?.length) setPackages(d.packages);
+        if (d.brief?.json?.selected_package) setSelectedPackage(d.brief.json.selected_package);
         setReadyForApproval(d.ready_for_approval);
       }
     } catch (e) {
       setMessages([...newMessages, { role: 'assistant', content: `אירעה שגיאה: ${e.message}` }]);
     }
     setSending(false);
+  };
+
+  const handleSelectPackage = async (pkg) => {
+    setSelectedPackage(pkg.tier);
+    if (!briefId) return;
+    // שמירת החבילה הנבחרת על הבריף כדי שהאישור וההפקה ישתמשו בה
+    const brief = await base44.entities.Brief.get(briefId);
+    const json = { ...(brief.json || {}), selected_package: pkg.tier };
+    await base44.entities.Brief.update(briefId, {
+      json,
+      credits_estimate: pkg.credits,
+      total_api_cost_usd: pkg.total_api_cost_usd,
+    });
+    setBriefJson(json);
   };
 
   if (!started) {
@@ -122,6 +140,9 @@ export default function NewVideo() {
               briefJson={briefJson}
               pricing={pricing}
               recommendation={recommendation}
+              packages={packages}
+              selectedPackage={selectedPackage}
+              onSelectPackage={handleSelectPackage}
             />
           )}
           <div ref={endRef} />

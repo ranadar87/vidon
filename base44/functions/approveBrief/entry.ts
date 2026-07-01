@@ -45,8 +45,43 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'validation failed', details: errors }, { status: 422 });
     }
 
-    const credits = brief.json.cost.credits;
     const project = await base44.asServiceRole.entities.Project.get(brief.project_id);
+
+    // 1.5 החלת החבילה הנבחרת (selected_package) על מקורות הוויזואל וה-videoType,
+    // כדי שה-orchestrator יבנה את הצינור הנכון (סטילס / תמונה-לווידאו / וידאו גנרטיבי / אווטאר).
+    let workingJson = brief.json;
+    const pkg = (brief.json.packages || []).find((p) => p.tier === brief.json.selected_package);
+    if (pkg) {
+      const catalog = await base44.asServiceRole.entities.ModelCatalog.list();
+      const pickKey = (capability, tier) => {
+        const pool = catalog.filter((m) => m.capability === capability && m.enabled !== false);
+        const orderMap = { economy: ["economy", "standard", "premium"], standard: ["standard", "premium", "economy"], premium: ["premium", "standard", "economy"] };
+        for (const t of (orderMap[tier] || ["standard"])) {
+          const hit = pool.find((m) => m.quality_tier === t);
+          if (hit) return hit;
+        }
+        return pool[0];
+      };
+      const strat = pkg.strategy;
+      const scenes = (brief.json.scenes || []).map((s) => {
+        let source = "stock";
+        let model = null;
+        if (strat === "text_to_video") { const m = pickKey("text_to_video", pkg.tier); source = m?.provider === "openrouter" ? (m.model_key.includes("veo") ? "veo" : "kling") : "veo"; model = m?.model_key; }
+        else if (strat === "image_to_video") { const m = pickKey("image_to_video", pkg.tier); source = "kling"; model = m?.model_key; }
+        else if (strat === "image_motion") { const m = pickKey("text_to_image", pkg.tier); source = "nano_banana"; model = m?.model_key; }
+        return { ...s, visual: { ...(s.visual || {}), source, model } };
+      });
+      workingJson = {
+        ...brief.json,
+        scenes,
+        format: { ...brief.json.format, videoType: strat === "avatar" ? "ugc_avatar" : strat === "text_to_video" ? "generative_scenes" : strat === "image_to_video" ? "hybrid" : "image_motion" },
+        cost: { ...brief.json.cost, credits: pkg.credits, totalApiCost: pkg.total_api_cost_usd },
+      };
+      await base44.asServiceRole.entities.Brief.update(brief.id, { json: workingJson });
+      brief.json = workingJson;
+    }
+
+    const credits = brief.json.cost.credits;
 
     // 2. CreditLedger hold (≥ credits_estimate)
     await base44.asServiceRole.entities.CreditLedger.create({

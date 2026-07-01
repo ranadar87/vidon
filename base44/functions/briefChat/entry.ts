@@ -42,6 +42,76 @@ function computePricing(brief, rates, { markup = 5, fx = 3.7, creditValue = 0.15
   return { breakdown, totalApiCostUsd: cost, totalApiCostIls, markup, credits };
 }
 
+// ----- מנוע תכנון ה-Pipeline (inline) — עד 3 חבילות איכות מהזול ליקר, מבוסס קטלוג מודלים אמיתי -----
+function pickModel(catalog, capability, tier) {
+  const pool = catalog.filter((m) => m.capability === capability && m.enabled !== false);
+  if (pool.length === 0) return null;
+  const order = { economy: ["economy", "standard", "premium"], standard: ["standard", "premium", "economy"], premium: ["premium", "standard", "economy"] };
+  for (const t of (order[tier] || ["standard"])) {
+    const hit = pool.find((m) => m.quality_tier === t);
+    if (hit) return hit;
+  }
+  return pool[0];
+}
+
+function commonPipelineCosts(brief, catalog) {
+  let usd = 0;
+  const durationSec = brief.format?.durationSec || 0;
+  if (brief.voiceover?.enabled) {
+    const tts = catalog.find((m) => m.capability === "tts");
+    usd += (tts?.rate_usd ?? 0.3) * ((brief.voiceover.fullScript || "").length / 1000);
+  }
+  if (brief.captions?.enabled) usd += 0.4 * (durationSec / 60);
+  if (brief.music?.enabled && brief.music.source === "suno") usd += 0.5;
+  const ratios = (brief.format?.aspectRatios || []).length || 1;
+  const render = catalog.find((m) => m.capability === "render");
+  usd += (render?.rate_usd ?? 0.03) * (durationSec / 60) * ratios;
+  return usd;
+}
+
+function buildPipelinePackage(brief, catalog, tier, strategy) {
+  const scenes = brief.scenes || [];
+  const durationSec = brief.format?.durationSec || 0;
+  const steps = [];
+  let usd = 0;
+  if (strategy === "avatar") {
+    const avatar = pickModel(catalog, "avatar", tier);
+    const c = (avatar?.rate_usd ?? 0.1) * durationSec;
+    usd += c; steps.push({ step: "avatar", model: avatar?.display_name, provider: avatar?.provider });
+  } else if (strategy === "text_to_video") {
+    const t2v = pickModel(catalog, "text_to_video", tier);
+    for (const s of scenes) { usd += (t2v?.rate_usd ?? 0.1) * (s.durationSec || 0); }
+    if (t2v) steps.push({ step: "video", model: t2v.display_name, provider: t2v.provider });
+  } else if (strategy === "image_to_video") {
+    const img = pickModel(catalog, "text_to_image", tier);
+    const i2v = pickModel(catalog, "image_to_video", tier);
+    for (const s of scenes) { usd += (img?.rate_usd ?? 0.04) + (i2v?.rate_usd ?? 0.06) * (s.durationSec || 0); }
+    if (img) steps.push({ step: "image", model: img.display_name, provider: img.provider });
+    if (i2v) steps.push({ step: "animate", model: i2v.display_name, provider: i2v.provider });
+  } else {
+    const img = pickModel(catalog, "text_to_image", tier);
+    for (const _s of scenes) { usd += (img?.rate_usd ?? 0.04); }
+    if (img) steps.push({ step: "image", model: img.display_name, provider: img.provider });
+  }
+  usd += commonPipelineCosts(brief, catalog);
+  const credits = Math.ceil((usd * 3.7 * 5) / 0.15);
+  const tierLabels = { economy: "חסכוני", standard: "מומלץ", premium: "פרימיום" };
+  const strategyLabels = { avatar: "דמות אנושית מדברת (UGC)", text_to_video: "סצנות וידאו גנרטיביות מטקסט", image_to_video: "תמונות מותאמות שהופכות לווידאו", image_motion: "תמונות סטילס עם אנימציה" };
+  return { tier, tier_label: tierLabels[tier], strategy, strategy_label: strategyLabels[strategy], steps, total_api_cost_usd: usd, credits };
+}
+
+function planPackages(brief, catalog) {
+  const vt = brief.format?.videoType;
+  let plan;
+  if (vt === "ugc_avatar") plan = [{ tier: "standard", strategy: "avatar" }, { tier: "premium", strategy: "avatar" }];
+  else plan = [{ tier: "economy", strategy: "image_motion" }, { tier: "standard", strategy: "image_to_video" }, { tier: "premium", strategy: "text_to_video" }];
+  let packages = plan.map((p) => buildPipelinePackage(brief, catalog, p.tier, p.strategy));
+  const seen = new Set();
+  packages = packages.filter((p) => { if (seen.has(p.credits)) return false; seen.add(p.credits); return true; });
+  packages.sort((a, b) => a.credits - b.credits);
+  return packages;
+}
+
 // מנוע ה-Brief Intelligence — לולאת LLM אגנטית בעברית.
 // קורא ל-Claude Sonnet דרך OpenRouter, תור אחר תור. חסר-מצב: כל ההקשר מוזרק בכל קריאה.
 // התמחור נעשה בקוד (priceBrief) — ה-LLM לעולם לא ממציא מחירים.
@@ -269,6 +339,23 @@ Deno.serve(async (req) => {
       };
     }
 
+    // תכנון חבילות איכות (עד 3, מהזול ליקר) מבוסס קטלוג המודלים האמיתי
+    let packages = [];
+    if (pricing) {
+      try {
+        const catalog = await base44.asServiceRole.entities.ModelCatalog.list();
+        if (catalog && catalog.length > 0) {
+          packages = planPackages(mergedJson, catalog);
+          mergedJson.packages = packages;
+          // אם עוד לא נבחרה חבילה — ברירת מחדל: "מומלץ" (standard) אם קיים, אחרת הזולה
+          if (!mergedJson.selected_package) {
+            const def = packages.find((p) => p.tier === "standard") || packages[0];
+            mergedJson.selected_package = def?.tier;
+          }
+        }
+      } catch (_e) { /* אם הקטלוג ריק — ממשיכים עם תמחור הבסיס בלבד */ }
+    }
+
     // שמירת/יצירת הבריף עם version מועלה
     let savedBrief;
     if (brief) {
@@ -308,6 +395,7 @@ Deno.serve(async (req) => {
       ready_for_pricing: !!output.ready_for_pricing,
       ready_for_approval: !!output.ready_for_approval,
       pricing,
+      packages,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
