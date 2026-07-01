@@ -5,7 +5,8 @@ import PageHeader from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Send, Loader2, Sparkles, ArrowLeft } from 'lucide-react';
+import { Send, Loader2, Sparkles } from 'lucide-react';
+import ProposalCard from '@/components/ProposalCard';
 
 export default function NewVideo() {
   const navigate = useNavigate();
@@ -15,6 +16,8 @@ export default function NewVideo() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [pricing, setPricing] = useState(null);
+  const [recommendation, setRecommendation] = useState(null);
+  const [briefJson, setBriefJson] = useState(null);
   const [readyForApproval, setReadyForApproval] = useState(false);
   const [title, setTitle] = useState('');
   const [vertical, setVertical] = useState('');
@@ -59,8 +62,10 @@ export default function NewVideo() {
         setMessages([...newMessages, { role: 'assistant', content: `אירעה שגיאה: ${d.error}` }]);
       } else {
         setBriefId(d.brief?.id);
+        setBriefJson(d.brief?.json || null);
         setMessages([...newMessages, { role: 'assistant', content: d.assistant_message }]);
-        setPricing(d.pricing);
+        if (d.pricing) setPricing(d.pricing);
+        if (d.recommendation) setRecommendation(d.recommendation);
         setReadyForApproval(d.ready_for_approval);
       }
     } catch (e) {
@@ -111,17 +116,13 @@ export default function NewVideo() {
               <div className="bg-card border rounded-2xl px-4 py-2.5"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
             </div>
           )}
-          {pricing && (
-            <Card className="p-4 max-w-[80%] ml-auto bg-accent">
-              <div className="text-sm font-semibold mb-2">הצעת מחיר</div>
-              <div className="text-2xl font-bold font-display">{pricing.credits} קרדיטים</div>
-              <div className="text-xs text-muted-foreground mt-1">עלות API: ${pricing.totalApiCostUsd?.toFixed(2)} · markup ×{pricing.markup}</div>
-              {readyForApproval && briefId && (
-                <Button className="w-full mt-3 gap-2" onClick={() => navigate(`/brief/${briefId}`)}>
-                  לעריכה ואישור <ArrowLeft className="w-4 h-4" />
-                </Button>
-              )}
-            </Card>
+          {(pricing || briefJson?.recommendation) && (
+            <ProposalCard
+              briefId={briefId}
+              briefJson={briefJson}
+              pricing={pricing}
+              recommendation={recommendation}
+            />
           )}
           <div ref={endRef} />
         </div>
