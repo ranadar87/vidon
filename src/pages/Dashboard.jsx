@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import StatusBadge from '@/components/StatusBadge';
+import SystemHealthCard from '@/components/SystemHealthCard';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { MessageSquarePlus, Film, Clock, Wallet, Loader2 } from 'lucide-react';
@@ -64,6 +65,8 @@ export default function Dashboard() {
                 </Card>
               ))}
             </div>
+
+            <SystemHealthCard />
 
             <Card className="overflow-hidden">
               <div className="px-5 py-4 border-b font-semibold">פרויקטים אחרונים</div>
