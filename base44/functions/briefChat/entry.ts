@@ -196,24 +196,49 @@ function deepMerge(target, patch) {
   return out;
 }
 
-async function callLLM(messages) {
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${Deno.env.get("OPENROUTER_API_KEY")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "anthropic/claude-sonnet-4",
-      messages,
-      temperature: 0.4,
-      response_format: { type: "json_object" },
-    }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OpenRouter error ${res.status}: ${text}`);
+async function fetchLLMWithRetry(messages, attempts = 3) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 45000);
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: {
+          "Authorization": `Bearer ${Deno.env.get("OPENROUTER_API_KEY")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "anthropic/claude-sonnet-4",
+          messages,
+          temperature: 0.4,
+          response_format: { type: "json_object" },
+        }),
+      });
+      clearTimeout(timeout);
+      // 429 / 5xx = שגיאה חולפת — כדאי לנסות שוב
+      if (res.status === 429 || res.status >= 500) {
+        lastErr = new Error(`OpenRouter error ${res.status}: ${(await res.text()).slice(0, 200)}`);
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+        continue;
+      }
+      if (!res.ok) {
+        throw new Error(`OpenRouter error ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      }
+      return res;
+    } catch (e) {
+      clearTimeout(timeout);
+      lastErr = e;
+      // timeout / שגיאת רשת חולפת — ננסה שוב
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
   }
+  throw lastErr || new Error("OpenRouter failed after retries");
+}
+
+async function callLLM(messages) {
+  const res = await fetchLLMWithRetry(messages);
   const data = await res.json();
   let content = data.choices?.[0]?.message?.content || "{}";
   // Claude לא תמיד מכבד response_format ועוטף ב-```json ... ``` — מנקים לפני parse.
@@ -288,8 +313,24 @@ Deno.serve(async (req) => {
       { role: "user", content: message },
     ];
 
-    // קריאה ל-LLM עם עד 2 ניסיונות תיקון validation
-    let output = await callLLM(messages);
+    // קריאה ל-LLM עם retry מובנה. אם נכשל לגמרי — מחזירים הודעה ידידותית (לא 500 שסוגר את הצ׳אט).
+    let output;
+    try {
+      output = await callLLM(messages);
+    } catch (llmErr) {
+      console.error("callLLM failed after retries:", llmErr.message);
+      return Response.json({
+        assistant_message: "מצטער, נתקלתי בעומס רגעי בשירות. נסו לשלוח את ההודעה שוב.",
+        phase: brief?.phase || "gathering",
+        brief: brief || null,
+        missing_fields: [],
+        recommendation: brief?.json?.recommendation || null,
+        ready_for_pricing: false,
+        ready_for_approval: false,
+        pricing: null,
+        packages: [],
+      });
+    }
 
     // התעלמות תמיד מ-cost שמגיע מה-LLM
     if (output.brief_patch?.cost) delete output.brief_patch.cost;
