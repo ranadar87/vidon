@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, CheckCircle2, Film, Mic2, Music, Type, Sparkles } from 'lucide-react';
 import VariationsDialog from '@/components/VariationsDialog';
+import BriefReadiness, { getMissingFields } from '@/components/BriefReadiness';
 
 export default function BriefEditor() {
   const { briefId } = useParams();
@@ -47,6 +48,7 @@ export default function BriefEditor() {
 
   const j = brief.json || {};
   const approved = brief.status === 'approved';
+  const missing = getMissingFields(j);
 
   return (
     <div>
@@ -59,9 +61,9 @@ export default function BriefEditor() {
               <Sparkles className="w-4 h-4" /> ייצר וריאציות A/B
             </Button>
           ) : (
-            <Button onClick={approve} disabled={approving} className="gap-2">
+            <Button onClick={approve} disabled={approving || missing.length > 0} className="gap-2">
               {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              אשר והפק ({j.cost?.credits} קרדיטים)
+              {missing.length > 0 ? 'הבריף לא גמור' : `אשר והפק (${j.cost?.credits} קרדיטים)`}
             </Button>
           )
         }
@@ -72,6 +74,8 @@ export default function BriefEditor() {
             <CheckCircle2 className="w-4 h-4" /> הבריף אושר ונעול (immutable).
           </Card>
         )}
+
+        {!approved && <BriefReadiness missing={missing} />}
 
         <Card className="p-5">
           <h3 className="font-semibold mb-3">פרויקט</h3>
